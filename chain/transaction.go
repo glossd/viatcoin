@@ -1,4 +1,4 @@
-package blockchain
+package chain
 
 import (
 	"bytes"
@@ -7,16 +7,20 @@ import (
 	"encoding/hex"
 )
 
-type Coin int64
+type Coin uint64
 
 const (
 	Gloshi   Coin = 1
 	Viatcoin      = 1e8 * Gloshi
 )
 
+// I did not like UTXOs, they really made the transactions complicated.
+
 type Transaction struct {
-	Address   string
-	Transfers []Transfer
+	Hash   string
+	From   string
+	To     string
+	Amount Coin
 	// todo add miner fee, for now only block reward
 }
 
@@ -56,7 +60,8 @@ type Transfer struct {
 
 func coinbaseTransaction(minerAddress string) Transaction {
 	return Transaction{
-		Address:   "", // creates new coins
-		Transfers: []Transfer{{Address: minerAddress, Amount: getMinerReward()}},
+		From:   "", // creates new coins
+		To:     minerAddress,
+		Amount: getMinerReward(),
 	}
 }

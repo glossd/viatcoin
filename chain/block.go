@@ -1,4 +1,4 @@
-package blockchain
+package chain
 
 import (
 	"bytes"
@@ -6,6 +6,25 @@ import (
 	"math/big"
 	"time"
 )
+
+var maxDifficultyTarget = new(big.Int).SetBytes([]byte{
+	0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+})
+
+// as in the genesis block in btc
+var firstTransaction = coinbaseTransaction("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")
+var genesisBlock = Block{
+	Version:              1,
+	PreviousHash:         []byte{},
+	MerkleRoot:           calcMerkelRoot([]Transaction{firstTransaction}),
+	Timestamp:            1231006505,
+	Nonce:                2083236893,
+	DifficultyTargetBits: 0, // todo Difficulty 1, from maxDifficultyTarget
+	Transactions:         []Transaction{firstTransaction},
+}
 
 type Block struct {
 	Version      uint32
@@ -36,11 +55,21 @@ func (b Block) blockHeader() []byte {
 	return buf.Bytes()
 }
 
+func (b Block) Hash() []byte {
+	return doubleSHA256(b.blockHeader())
+}
+
 func (b Block) DifficultyTarget() *big.Int {
 	exponent := b.DifficultyTargetBits >> 24         // first byte
 	coefficient := b.DifficultyTargetBits & 0xFFFFFF // 3 last bytes
 	target := new(big.Int).SetUint64(uint64(coefficient))
 	return target.Lsh(target, uint(8*(exponent-3)))
+}
+
+func (b Block) Difficulty() float64 {
+	div := new(big.Int).Div(maxDifficultyTarget, b.DifficultyTarget())
+	res, _ := div.Float64()
+	return res
 }
 
 func (b Block) checkValidity() bool {

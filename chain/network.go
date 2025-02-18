@@ -1,4 +1,4 @@
-package blockchain
+package chain
 
 import (
 	"fmt"
@@ -18,10 +18,10 @@ func getMinerReward() Coin {
 }
 
 func Broadcast(b Block) error {
+	// todo check that transactions exists in the mempool
 	if !b.checkValidity() {
 		return fmt.Errorf("invalid block")
 	}
-	// todo how does bitcoin blockchain checks that the block is correct
 	blockchain = append(blockchain, b)
 	return nil
 }
