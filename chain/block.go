@@ -22,7 +22,7 @@ var genesisBlock = Block{
 	MerkleRoot:           calcMerkelRoot([]Transaction{firstTransaction}),
 	Timestamp:            1231006505,
 	Nonce:                2083236893,
-	DifficultyTargetBits: 0, // todo Difficulty 1, from maxDifficultyTarget
+	DifficultyTargetBits: targetToBits(maxDifficultyTarget),
 	Transactions:         []Transaction{firstTransaction},
 }
 
@@ -60,10 +60,36 @@ func (b Block) Hash() []byte {
 }
 
 func (b Block) DifficultyTarget() *big.Int {
-	exponent := b.DifficultyTargetBits >> 24         // first byte
-	coefficient := b.DifficultyTargetBits & 0xFFFFFF // 3 last bytes
+	return bitsToTarget(b.DifficultyTargetBits)
+}
+
+func bitsToTarget(compact uint32) *big.Int {
+	exponent := compact >> 24         // first byte
+	coefficient := compact & 0xFFFFFF // 3 last bytes
 	target := new(big.Int).SetUint64(uint64(coefficient))
 	return target.Lsh(target, uint(8*(exponent-3)))
+}
+
+// reverse of bitsToTarget
+func targetToBits(target *big.Int) uint32 {
+	size := uint32((target.BitLen() + 7) / 8) // Number of bytes required
+	var compact uint32
+
+	if size <= 3 {
+		compact = uint32(target.Uint64() << (8 * (3 - size)))
+	} else {
+		tmp := new(big.Int).Rsh(target, uint(8*(size-3))) // Shift right to fit in 3 bytes
+		compact = uint32(tmp.Uint64())
+	}
+
+	// Add exponent (size) as the first byte
+	if compact&0x00800000 != 0 {
+		compact >>= 8
+		size++
+	}
+
+	compact |= size << 24
+	return compact
 }
 
 func (b Block) Difficulty() float64 {

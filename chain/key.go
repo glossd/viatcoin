@@ -14,5 +14,5 @@ func (p privateKey) PublicAddress() {
 
 // Generate private key with secp256k1 ECC
 func NewPrivateKey() privateKey {
-	// todo
+	panic("todo")
 }
