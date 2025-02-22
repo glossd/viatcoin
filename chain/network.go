@@ -5,6 +5,13 @@ import (
 	"math"
 )
 
+type Net byte
+
+const (
+	Mainnet Net = 0x00
+	Testnet Net = 0x6F
+)
+
 // todo adjust mining difficulty every 2,016 blocks (~2 weeks) to keep block times around 10 minutes.
 
 var difficulty = 1.0
