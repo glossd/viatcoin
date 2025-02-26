@@ -77,6 +77,12 @@ func (t Transaction) Sign(key *PrivateKey) error {
 	return nil
 }
 
+func (t Transaction) Verify() bool {
+	// todo extract PublicKey and signature from ScriptSig
+	// key.Verify(t.Serialize(), signature)
+	return false
+}
+
 func doSHA256(in []byte) []byte {
 	h := sha256.New()
 	h.Write(in)
@@ -90,8 +96,8 @@ func doubleSHA256(in []byte) []byte {
 
 func coinbaseTransaction(minerAddress string) Transaction {
 	return Transaction{
-		from:    "", // creates new coins
-		To:      minerAddress,
+		from: "", // creates new coins
+		To:   minerAddress,
 		//todo Amount: getMinerReward(),
 	}
 }

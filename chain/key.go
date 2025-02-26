@@ -1,6 +1,7 @@
 package chain
 
 import (
+	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
 	"github.com/decred/base58"
@@ -43,6 +44,10 @@ func (p *PublicKey) Bytes() []byte {
 	}
 }
 
+func (p *PublicKey) Verify(txData []byte, signature []byte) bool {
+	return ecdsa.VerifyASN1(p.key.ToECDSA(), txData, signature)
+}
+
 func (p *PublicKey) publicKeyHash() []byte {
 	return doRipemd160(doSHA256(p.Bytes()))
 }
@@ -65,7 +70,7 @@ func doRipemd160(b []byte) []byte {
 	return hasher.Sum(nil)
 }
 
-// Generate private key with secp256k1 ECC
+// Generate private key with secp256k1
 func NewPrivateKey() (*PrivateKey, error) {
 	key, err := secp256k1.GeneratePrivateKey()
 	if err != nil {
