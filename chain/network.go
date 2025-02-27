@@ -14,6 +14,12 @@ const (
 
 // todo adjust mining difficulty every 2,016 blocks (~2 weeks) to keep block times around 10 minutes.
 
+var network = Mainnet
+
+func SetNetwork(net Net) {
+	network = net
+}
+
 var difficulty = 1.0
 
 var originalMinerReward = 50 * Viatcoin

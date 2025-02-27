@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"fmt"
+	"github.com/google/uuid"
 )
 
 type Coin uint64
@@ -21,33 +22,39 @@ const (
 type Transaction struct {
 	Version uint32
 
-	Hash string
-
+	Hash         string
+	PreviousHash string
 	// filled with Sign
 	from string
 
 	To string
 	// Updated Balance. OldBalance - Balance = Amount of coins to send to To.
 	Balance Coin
-	// Unlocking wallet. Signature+PublicKey
-	ScriptSig []byte
-	// Locking wallet.
-	ScriptPubSig []byte
+
+	// ScriptSig is divided
+	Signature []byte
+	PublicKey []byte
 	// todo add miner fee, for now only block reward
 }
 
-func NewTransaction(newBalance Coin, toAddress string) Transaction {
+func NewTransaction(previousHash string, newBalance Coin, toAddress string) Transaction {
 	return Transaction{
-		Version: 1,
-		To:      toAddress,
-		Balance: newBalance,
+		Version:      1,
+		Hash:         uuid.New().String(),
+		PreviousHash: previousHash,
+		To:           toAddress,
+		Balance:      newBalance,
 	}
 }
 
 func (t Transaction) Serialize() []byte {
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
-	err := enc.Encode(t)
+
+	copyT := t
+	copyT.Signature = nil
+	copyT.PublicKey = nil
+	err := enc.Encode(copyT)
 	if err != nil {
 		panic("Serialize failed: " + err.Error())
 	}
@@ -62,25 +69,37 @@ func (t Transaction) DoubleSha256() []byte {
 	return doubleSHA256([]byte(t.Hex()))
 }
 
-func (t Transaction) Sign(key *PrivateKey) error {
-	if key != nil {
-		return fmt.Errorf("key can't be nil")
+func (t Transaction) Sign(key *PrivateKey) (Transaction, error) {
+	if key == nil {
+		return t, fmt.Errorf("key can't be nil")
 	}
-	msgToBeSigned := doubleSHA256(append(t.Serialize(), 1))
-	// I believe it's already DER encoded
-	signature, err := key.Sign(msgToBeSigned)
+	// did I need to doubleSha256 the transaction data?
+	signature, err := key.Sign(t.Serialize())
+	// I believe the signature is already DER encoded
 	if err != nil {
-		return fmt.Errorf("failed to sign: %s", err)
+		return t, fmt.Errorf("failed to sign: %s", err)
 	}
+	t.Signature = signature
+	t.PublicKey = key.PublicKey().Bytes()
+	t.from = key.PublicKey().Address(network)
 
-	t.ScriptSig = append(append(signature, 1), key.PublicKey(true).Bytes()...)
-	return nil
+	return t, nil
 }
 
-func (t Transaction) Verify() bool {
-	// todo extract PublicKey and signature from ScriptSig
-	// key.Verify(t.Serialize(), signature)
-	return false
+func (t Transaction) Verify() error {
+	pubKey, err := PublicKeyFromBytes(t.PublicKey)
+	if err != nil {
+		return fmt.Errorf("couldn't deserialize public key: %s", err)
+	}
+	pubKeyAddr := pubKey.Address(network)
+	if pubKeyAddr != t.from {
+		return fmt.Errorf("address of the public key '%s' didn't match transaction's address: %s", pubKeyAddr, t.from)
+	}
+	ok := pubKey.Verify(t.Serialize(), t.Signature)
+	if !ok {
+		return fmt.Errorf("failed to verify")
+	}
+	return nil
 }
 
 func doSHA256(in []byte) []byte {

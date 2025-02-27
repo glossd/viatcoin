@@ -14,17 +14,15 @@ type PrivateKey struct {
 }
 
 type PublicKey struct {
-	compressed bool
-	key        *secp256k1.PublicKey
+	key *secp256k1.PublicKey
 }
 
-func (p *PrivateKey) PublicKey(compressed bool) *PublicKey {
+func (p *PrivateKey) PublicKey() *PublicKey {
 	if p == nil {
 		return nil
 	}
 	var pub PublicKey
 	pub.key = p.key.PubKey()
-	pub.compressed = compressed
 	return &pub
 }
 
@@ -37,11 +35,15 @@ func (p *PrivateKey) Sign(in []byte) ([]byte, error) {
 }
 
 func (p *PublicKey) Bytes() []byte {
-	if p.compressed {
-		return p.key.SerializeCompressed()
-	} else {
-		return p.key.SerializeUncompressed()
+	return p.key.SerializeCompressed()
+}
+
+func PublicKeyFromBytes(serialized []byte) (*PublicKey, error) {
+	res, err := secp256k1.ParsePubKey(serialized)
+	if err != nil {
+		return nil, err
 	}
+	return &PublicKey{key: res}, nil
 }
 
 func (p *PublicKey) Verify(txData []byte, signature []byte) bool {
@@ -77,4 +79,12 @@ func NewPrivateKey() (*PrivateKey, error) {
 		return nil, err
 	}
 	return &PrivateKey{key: key}, nil
+}
+
+func mustPrivKey() *PrivateKey {
+	k, err := NewPrivateKey()
+	if err != nil {
+		panic(err)
+	}
+	return k
 }

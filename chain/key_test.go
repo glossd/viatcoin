@@ -12,7 +12,7 @@ func TestSignAndVerify(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !(prv.PublicKey(true).Verify(myBytes, signature)) {
+	if !(prv.PublicKey().Verify(myBytes, signature)) {
 		t.Error("signature should've been verified")
 	}
 }
