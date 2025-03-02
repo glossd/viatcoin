@@ -98,7 +98,7 @@ func (b Block) Difficulty() float64 {
 	return res
 }
 
-func (b Block) checkValidity() bool {
+func (b Block) Valid() bool {
 	hash := doubleSHA256(b.blockHeader())
 	return bi(hash).Cmp(b.DifficultyTarget()) <= 0
 }
@@ -148,12 +148,11 @@ func calcMerkelRoot[T shaable](list []T) []byte {
 	return calcMerkelRoot(newList)
 }
 
-func NewBlock(previousHash []byte, selected []Transaction, nonce uint32) Block {
+func NewBlock(previousHash []byte, selected []Transaction) Block {
 	return Block{
 		PreviousHash: previousHash,
 		Timestamp:    uint32(time.Now().Unix()),
 		Transactions: selected,
-		Nonce:        nonce,
 		MerkleRoot:   calcMerkelRoot(selected),
 	}
 }

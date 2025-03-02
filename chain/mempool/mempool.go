@@ -1,39 +1,56 @@
 package mempool
 
 import (
+	"fmt"
 	"github.com/glossd/viatcoin/chain"
-	"slices"
 	"sync"
 )
 
-var memPool = []chain.Transaction{}
-var lock sync.RWMutex
+// bitcoin is using levelDB. It's persistent kv-storage sorted by keys.
+var memPool = sync.Map{}
 
-func Push(t chain.Transaction) {
-	lock.Lock()
-	defer lock.Unlock()
-	memPool = append(memPool, t)
+func Push(t chain.Transaction) error {
+	if err := t.Verify(); err != nil {
+		return err
+	}
+
+	previous, ok := Get(t.PreviousHash)
+	if !ok {
+		return fmt.Errorf("transaction not found with previous hash: %s", t.PreviousHash)
+	}
+
+	if previous.Balance >= t.Balance {
+		return fmt.Errorf("previous transaction balance must be less than old one")
+	}
+
+	memPool.LoadOrStore(t.Hash, t)
+	return nil
 }
 
-func Pop(num int) []chain.Transaction {
-	lock.RLock()
-	defer lock.RUnlock()
-	idx := num
-	if len(memPool) < idx {
-		idx = len(memPool)
+func Get(hash string) (chain.Transaction, bool) {
+	t, ok := memPool.Load(hash)
+	if !ok {
+		return chain.Transaction{}, false
 	}
-	return memPool[:]
+	return t.(chain.Transaction), true
+}
+
+func Top(num int) []chain.Transaction {
+	var res []chain.Transaction
+	memPool.Range(func(key, value any) bool {
+		if num == 0 {
+			return false
+		}
+		res = append(res, value.(chain.Transaction))
+		num--
+		return true
+	})
+
+	return res
 }
 
 func Delete(ts []chain.Transaction) {
-	lock.Lock()
-	defer lock.Unlock()
-	var set map[string]bool
 	for _, t := range ts {
-		set[t.Hash] = true
+		memPool.Delete(t.Hash)
 	}
-
-	slices.DeleteFunc(memPool, func(e chain.Transaction) bool {
-		return set[e.Hash]
-	})
 }

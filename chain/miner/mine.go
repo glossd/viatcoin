@@ -1,6 +1,45 @@
 package miner
 
-func StartMining() {
-	//ts := mempool.Pop(1000)
+import (
+	"fmt"
+	"github.com/glossd/viatcoin/chain"
+	"github.com/glossd/viatcoin/chain/mempool"
+	"math"
+)
 
+func StartMining() {
+	lb := chain.GetLastBlock()
+	//ts := mempool.Pop(1000)
+	txs := mempool.Top(1000)
+
+	block := searchForValidBlock(lb, txs)
+	err := chain.Broadcast(block)
+	if err != nil {
+		fmt.Printf("broadcasting valid block failed: %s\n", err)
+	}
+	StartMining()
+}
+
+func searchForValidBlock(last chain.Block, txs []chain.Transaction) chain.Block {
+	b := chain.NewBlock(last.PreviousHash, txs)
+	// todo add coinbase transaction
+	n, ok := bruteForceNonce(b)
+	if ok {
+		b.Nonce = n
+		return b
+	} else {
+		// new timestamp will change the hashes
+		return searchForValidBlock(last, txs)
+	}
+}
+
+func bruteForceNonce(b chain.Block) (uint32, bool) {
+	for {
+		if b.Valid() {
+			return b.Nonce, true
+		}
+		if math.MaxUint32 == b.Nonce {
+			return 0, false
+		}
+	}
 }

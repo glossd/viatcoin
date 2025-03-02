@@ -24,17 +24,21 @@ var difficulty = 1.0
 
 var originalMinerReward = 50 * Viatcoin
 
-var blockchain []Block
+var blockchain = []Block{genesisBlock}
 
-func getMinerReward() Coin {
+func GetLastBlock() Block {
+	return blockchain[len(blockchain)-1]
+}
+
+func GetMinerReward() Coin {
 	return originalMinerReward / Coin(math.Pow(2, float64(len(blockchain)/210_000)))
 }
 
 func Broadcast(b Block) error {
-	// todo check that transactions exists in the mempool
-	if !b.checkValidity() {
+	if !b.Valid() {
 		return fmt.Errorf("invalid block")
 	}
+	// todo check that transactions exists in the mempool
 	blockchain = append(blockchain, b)
 	return nil
 }
