@@ -2,22 +2,23 @@ package miner
 
 import (
 	"fmt"
-	"github.com/glossd/viatcoin/chain"
-	"github.com/glossd/viatcoin/chain/mempool"
 	"math"
+
+	"github.com/glossd/viatcoin/chain"
 )
 
-func StartMining() {
+func StartMining(pk *chain.PrivateKey) {
 	lb := chain.GetLastBlock()
-	//ts := mempool.Pop(1000)
-	txs := mempool.Top(1000)
-
+	txs := chain.Top(999)
+	// todo add coinbase transaction
+	// swap := txs[0]
+	// chain.NewTransactionCoinbase()
 	block := searchForValidBlock(lb, txs)
 	err := chain.Broadcast(block)
 	if err != nil {
 		fmt.Printf("broadcasting valid block failed: %s\n", err)
 	}
-	StartMining()
+	StartMining(pk)
 }
 
 func searchForValidBlock(last chain.Block, txs []chain.Transaction) chain.Block {

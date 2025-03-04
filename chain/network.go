@@ -38,7 +38,10 @@ func Broadcast(b Block) error {
 	if !b.Valid() {
 		return fmt.Errorf("invalid block")
 	}
-	// todo check that transactions exists in the mempool
+	if err := ExistsUnspent(b.Transactions); err != nil {
+		return fmt.Errorf("mempool: %s", err)
+	}
+	Delete(b.Transactions)
 	blockchain = append(blockchain, b)
 	return nil
 }

@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"fmt"
+
 	"github.com/google/uuid"
 )
 
@@ -25,7 +26,7 @@ type Transaction struct {
 	Hash         string
 	PreviousHash string
 	// filled with Sign
-	from string
+	From string
 
 	To string
 	// Updated Balance. OldBalance - Balance = Amount of coins to send to To.
@@ -81,7 +82,7 @@ func (t Transaction) Sign(key *PrivateKey) (Transaction, error) {
 	}
 	t.Signature = signature
 	t.PublicKey = key.PublicKey().Bytes()
-	t.from = key.PublicKey().Address(network)
+	t.From = key.PublicKey().Address(network)
 
 	return t, nil
 }
@@ -92,8 +93,8 @@ func (t Transaction) Verify() error {
 		return fmt.Errorf("couldn't deserialize public key: %s", err)
 	}
 	pubKeyAddr := pubKey.Address(network)
-	if pubKeyAddr != t.from {
-		return fmt.Errorf("address of the public key '%s' didn't match transaction's address: %s", pubKeyAddr, t.from)
+	if pubKeyAddr != t.From {
+		return fmt.Errorf("address of the public key '%s' didn't match transaction's address: %s", pubKeyAddr, t.From)
 	}
 	ok := pubKey.Verify(t.Serialize(), t.Signature)
 	if !ok {
@@ -111,12 +112,4 @@ func doSHA256(in []byte) []byte {
 
 func doubleSHA256(in []byte) []byte {
 	return doSHA256(doSHA256(in))
-}
-
-func coinbaseTransaction(minerAddress string) Transaction {
-	return Transaction{
-		from: "", // creates new coins
-		To:   minerAddress,
-		//todo Amount: getMinerReward(),
-	}
 }

@@ -14,8 +14,15 @@ var maxDifficultyTarget = new(big.Int).SetBytes([]byte{
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 })
 
-// as in the genesis block in btc
-var firstTransaction = coinbaseTransaction("1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa")
+var firstTransaction = func() Transaction {
+	// todo stable privateKey or take public key form bitcoin first transaction
+	pk := mustPrivKey()
+	tx, err := NewTransaction("", 50*Viatcoin, pk.PublicKey().Address(network)).Sign(pk)
+	if err != nil {
+		panic(err)
+	}
+	return tx
+}()
 var genesisBlock = Block{
 	Version:              1,
 	PreviousHash:         []byte{},
