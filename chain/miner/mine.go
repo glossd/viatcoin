@@ -1,24 +1,47 @@
 package miner
 
 import (
-	"fmt"
 	"math"
 
 	"github.com/glossd/viatcoin/chain"
 )
 
-func StartMining(pk *chain.PrivateKey) {
+type StartConfig struct {
+	Pk           *chain.PrivateKey // required
+	Network      chain.Net         // defaults to Mainnet
+	PreviousHash string            // optional if pk doesn't have any transactions
+}
+
+func StartMining(cfg StartConfig) {
+	if cfg.Pk == nil {
+		panic("private key isn't specified")
+	}
 	lb := chain.GetLastBlock()
 	txs := chain.Top(999)
-	// todo add coinbase transaction
-	// swap := txs[0]
-	// chain.NewTransactionCoinbase()
-	block := searchForValidBlock(lb, txs)
-	err := chain.Broadcast(block)
-	if err != nil {
-		fmt.Printf("broadcasting valid block failed: %s\n", err)
+
+	newBalance := chain.GetMinerReward()
+	if cfg.PreviousHash != "" {
+		t, ok := chain.GetUnspent(cfg.PreviousHash)
+		if !ok {
+			panic("previous transaction is not unspent")
+		}
+		newBalance += t.Balance
 	}
-	StartMining(pk)
+
+	coinbaseTx, err := chain.NewTransaction(cfg.PreviousHash, newBalance, cfg.Pk.PublicKey().Address(cfg.Network)).Sign(cfg.Pk)
+	if err != nil {
+		panic("failed to sign coinbase transaction" + err.Error())
+	}
+	swap := txs[0]
+	txs[0] = coinbaseTx
+	txs = append(txs, swap)
+	block := searchForValidBlock(lb, txs)
+	err = chain.Broadcast(block)
+	if err != nil {
+		panic("broadcasting valid block failed: %s" + err.Error())
+	}
+	cfg.PreviousHash = coinbaseTx.Hash
+	StartMining(cfg)
 }
 
 func searchForValidBlock(last chain.Block, txs []chain.Transaction) chain.Block {

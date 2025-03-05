@@ -12,14 +12,13 @@ const (
 	Testnet Net = 0x6F
 )
 
-// todo adjust mining difficulty every 2,016 blocks (~2 weeks) to keep block times around 10 minutes.
-
 var network = Mainnet
 
 func SetNetwork(net Net) {
 	network = net
 }
 
+// todo adjust mining difficulty every 2,016 blocks (~2 weeks) to keep block times around 10 minutes.
 var difficulty = 1.0
 
 var originalMinerReward = 50 * Viatcoin
@@ -38,6 +37,8 @@ func Broadcast(b Block) error {
 	if !b.Valid() {
 		return fmt.Errorf("invalid block")
 	}
+	// todo validate the first coinbase transaction,
+	// validate balances of the transactions
 	if err := ExistsUnspent(b.Transactions); err != nil {
 		return fmt.Errorf("mempool: %s", err)
 	}

@@ -11,7 +11,7 @@ import (
 var memPool = util.Map[string, Transaction]{}
 
 // set of unspent transaction. Bitcoin has unspent outputs.
-var unspentTxs = util.Map[string, bool]{}
+var unspentTxs = util.Map[string, Transaction]{}
 
 func Push(t Transaction) error {
 	if err := t.Verify(); err != nil {
@@ -33,6 +33,10 @@ func Push(t Transaction) error {
 
 func Get(hash string) (Transaction, bool) {
 	return memPool.Load(hash)
+}
+
+func GetUnspent(hash string) (Transaction, bool) {
+	return unspentTxs.Load(hash)
 }
 
 func Top(num int) []Transaction {
@@ -58,7 +62,7 @@ func ExistsUnspent(ts []Transaction) error {
 		if reflect.DeepEqual(t, mt) {
 			return fmt.Errorf("transaction doesn't match: %s", t.Hash)
 		}
-		if _, ok := unspentTxs.Load(t.Hash); !ok {
+		if _, ok := unspentTxs.Load(t.PreviousHash); !ok {
 			return fmt.Errorf("already spent transaction: %s", t.Hash)
 		}
 	}
@@ -69,6 +73,6 @@ func Delete(ts []Transaction) {
 	for _, t := range ts {
 		memPool.Delete(t.Hash)
 		unspentTxs.Delete(t.PreviousHash)
-		unspentTxs.Store(t.Hash, true)
+		unspentTxs.Store(t.Hash, t)
 	}
 }
