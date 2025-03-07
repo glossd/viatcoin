@@ -59,10 +59,10 @@ func Broadcast(b Block) error {
 		}
 	}
 
-	// validate balances of the transactions
-	if err := ExistsUnspent(b.Transactions); err != nil {
-		return fmt.Errorf("mempool: %s", err)
+	for _, tx := range b.Transactions[1:] {
+		verifyTx(tx)
 	}
+
 	MarkIngested(b.Transactions)
 	blockchain = append(blockchain, b)
 	return nil

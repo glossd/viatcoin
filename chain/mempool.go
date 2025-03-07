@@ -28,6 +28,14 @@ func verifyTx(t Transaction) error {
 		return err
 	}
 
+	mt, ok := memPool.Load(t.Hash)
+	if !ok {
+		return fmt.Errorf("transaction is not in the mempool: %s", t.Hash)
+	}
+	if reflect.DeepEqual(t, mt) {
+		return fmt.Errorf("transaction doesn't match the one in mempool: %s", t.Hash)
+	}
+
 	previous, ok := GetUnspent(t.PreviousHash)
 	if !ok {
 		return fmt.Errorf("previous transaction is not unspent: %s", t.PreviousHash)
@@ -59,22 +67,6 @@ func Top(num int) []Transaction {
 	})
 
 	return res
-}
-
-func ExistsUnspent(ts []Transaction) error {
-	for _, t := range ts {
-		mt, ok := Get(t.Hash)
-		if !ok {
-			return fmt.Errorf("transaction not found: %s", t.Hash)
-		}
-		if reflect.DeepEqual(t, mt) {
-			return fmt.Errorf("transaction doesn't match: %s", t.Hash)
-		}
-		if _, ok := unspentTxs.Load(t.PreviousHash); !ok {
-			return fmt.Errorf("already spent transaction: %s", t.Hash)
-		}
-	}
-	return nil
 }
 
 func MarkIngested(ts []Transaction) {
