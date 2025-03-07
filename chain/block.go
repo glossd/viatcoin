@@ -83,6 +83,12 @@ func bitsToTarget(compact uint32) *big.Int {
 	return target.Lsh(target, uint(8*(exponent-3)))
 }
 
+func BitsToDifficutly(compact uint32) float64 {
+	div := new(big.Float).Quo(new(big.Float).SetInt(maxDifficultyTarget), new(big.Float).SetInt(bitsToTarget(compact)))
+	res, _ := div.Float64()
+	return res
+}
+
 // reverse of bitsToTarget
 func targetToBits(target *big.Int) uint32 {
 	size := uint32((target.BitLen() + 7) / 8) // Number of bytes required
@@ -103,6 +109,13 @@ func targetToBits(target *big.Int) uint32 {
 
 	compact |= size << 24
 	return compact
+}
+
+func DiffucltyToBits(dif float64) uint32 {
+	diffTargetFloat := new(big.Float).Quo(new(big.Float).SetInt(maxDifficultyTarget), big.NewFloat(dif))
+	diffTarget := new(big.Int)
+	diffTargetFloat.Int(diffTarget)
+	return targetToBits(diffTarget)
 }
 
 func (b Block) Difficulty() float64 {
@@ -161,11 +174,12 @@ func calcMerkelRoot[T shaable](list []T) []byte {
 	return calcMerkelRoot(newList)
 }
 
-func NewBlock(previousHash []byte, selected []Transaction) Block {
+func NewBlock(previousHash []byte, selected []Transaction, netDifficutlyBits uint32) Block {
 	return Block{
-		PreviousHash: previousHash,
-		Timestamp:    uint32(time.Now().Unix()),
-		Transactions: selected,
-		MerkleRoot:   calcMerkelRoot(selected),
+		PreviousHash:         previousHash,
+		Timestamp:            uint32(time.Now().Unix()),
+		Transactions:         selected,
+		MerkleRoot:           calcMerkelRoot(selected),
+		DifficultyTargetBits: netDifficutlyBits,
 	}
 }

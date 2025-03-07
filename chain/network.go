@@ -33,6 +33,10 @@ func GetMinerReward() Coin {
 	return originalMinerReward / Coin(math.Pow(2, float64(len(blockchain)/210_000)))
 }
 
+func GetDiffuctlyTargetBits() uint32 {
+	return DiffucltyToBits(difficulty)
+}
+
 func Broadcast(b Block) error {
 	if !b.Valid() {
 		return fmt.Errorf("invalid block")
