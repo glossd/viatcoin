@@ -6,6 +6,7 @@ import (
 	"encoding/gob"
 	"encoding/hex"
 	"fmt"
+	"math/big"
 
 	"github.com/google/uuid"
 )
@@ -16,6 +17,11 @@ const (
 	Gloshi   Coin = 1
 	Viatcoin      = 1e8 * Gloshi
 )
+
+func (c Coin) AsViatcoins() float64 {
+	res, _ := new(big.Int).Div(new(big.Int).SetUint64(uint64(c)), new(big.Int).SetInt64(1e8)).Float64()
+	return res
+}
 
 // I did not like UTXOs, they really made the transactions complicated.
 // Each transaction acts as one Input and one Output.
@@ -38,12 +44,13 @@ type Transaction struct {
 	// todo add miner fee, for now only block reward
 }
 
-func NewTransaction(previousHash string, newBalance Coin, toAddress string) Transaction {
+func NewTransaction(previousHash string, newBalance Coin, from, to string) Transaction {
 	return Transaction{
 		Version:      1,
 		Hash:         uuid.New().String(),
 		PreviousHash: previousHash,
-		To:           toAddress,
+		From:         from, // from could've been populated during singuture, but From needs to be present during serialization so that we know it wasn't tempered after.
+		To:           to,
 		Balance:      newBalance,
 	}
 }
@@ -80,9 +87,11 @@ func (t Transaction) Sign(key *PrivateKey) (Transaction, error) {
 	if err != nil {
 		return t, fmt.Errorf("failed to sign: %s", err)
 	}
+	if t.From != key.PublicKey().Address(network) {
+		return t, fmt.Errorf("private key address doesn't match the transaction from address.")
+	}
 	t.Signature = signature
 	t.PublicKey = key.PublicKey().Bytes()
-	t.From = key.PublicKey().Address(network)
 
 	return t, nil
 }

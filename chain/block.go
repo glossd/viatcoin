@@ -3,6 +3,7 @@ package chain
 import (
 	"bytes"
 	"encoding/binary"
+	"encoding/hex"
 	"math/big"
 	"time"
 )
@@ -15,9 +16,14 @@ var maxDifficultyTarget = new(big.Int).SetBytes([]byte{
 })
 
 var firstTransaction = func() Transaction {
-	// todo stable privateKey or take public key form bitcoin first transaction
-	pk := mustPrivKey()
-	tx, err := NewTransaction("", 50*Viatcoin, pk.PublicKey().Address(network)).Sign(pk)
+	// todo serialize signed transaction and deserialize it here
+	pkBytes, err := hex.DecodeString("56b29cd95fb3ecc7e729e564d3af72e73d67e2d97d038d4937c6a487de282a0d")
+	if err != nil {
+		panic(err)
+	}
+	pk := PrivateKeyFromBytes(pkBytes)
+	address := pk.PublicKey().Address(network)
+	tx, err := NewTransaction("", 50*Viatcoin, address, address).Sign(pk)
 	if err != nil {
 		panic(err)
 	}

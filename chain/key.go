@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/rand"
 	"encoding/hex"
+
 	"github.com/decred/base58"
 	"github.com/decred/dcrd/dcrec/secp256k1/v4"
 	"golang.org/x/crypto/ripemd160"
@@ -36,6 +37,11 @@ func (p *PrivateKey) Sign(in []byte) ([]byte, error) {
 
 func (p *PublicKey) Bytes() []byte {
 	return p.key.SerializeCompressed()
+}
+
+func PrivateKeyFromBytes(serialized []byte) *PrivateKey {
+	key := secp256k1.PrivKeyFromBytes(serialized)
+	return &PrivateKey{key: key}
 }
 
 func PublicKeyFromBytes(serialized []byte) (*PublicKey, error) {
