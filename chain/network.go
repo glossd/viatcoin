@@ -37,12 +37,33 @@ func Broadcast(b Block) error {
 	if !b.Valid() {
 		return fmt.Errorf("invalid block")
 	}
-	// todo validate the first coinbase transaction,
+	if len(b.Transactions) == 0 {
+		return fmt.Errorf("block must have at least one coinbase transaction")
+	}
+
+	coinbase := b.Transactions[0]
+	if err := coinbase.Verify(); err != nil {
+		return fmt.Errorf("coinbase transaction is invalid: %s", err)
+	}
+	if coinbase.PreviousHash == "" {
+		if coinbase.Balance != GetMinerReward() {
+			return fmt.Errorf("new coinbase balance doesn't match miner reward")
+		}
+	} else {
+		unspent, ok := GetUnspent(coinbase.PreviousHash)
+		if !ok {
+			return fmt.Errorf("previous hash of coinbase is not found")
+		}
+		if coinbase.Balance != unspent.Balance+GetMinerReward() {
+			return fmt.Errorf("coinbase miner reward doesn't add up with previous transaction")
+		}
+	}
+
 	// validate balances of the transactions
 	if err := ExistsUnspent(b.Transactions); err != nil {
 		return fmt.Errorf("mempool: %s", err)
 	}
-	Delete(b.Transactions)
+	MarkIngested(b.Transactions)
 	blockchain = append(blockchain, b)
 	return nil
 }

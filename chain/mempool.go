@@ -14,20 +14,28 @@ var memPool = util.Map[string, Transaction]{}
 var unspentTxs = util.Map[string, Transaction]{}
 
 func Push(t Transaction) error {
+	err := verifyTx(t)
+	if err != nil {
+		return err
+	}
+
+	memPool.LoadOrStore(t.Hash, t)
+	return nil
+}
+
+func verifyTx(t Transaction) error {
 	if err := t.Verify(); err != nil {
 		return err
 	}
 
-	previous, ok := Get(t.PreviousHash)
+	previous, ok := GetUnspent(t.PreviousHash)
 	if !ok {
-		return fmt.Errorf("transaction not found with previous hash: %s", t.PreviousHash)
+		return fmt.Errorf("previous transaction is not unspent: %s", t.PreviousHash)
 	}
 
 	if previous.Balance >= t.Balance {
 		return fmt.Errorf("previous transaction balance must be less than old one")
 	}
-
-	memPool.LoadOrStore(t.Hash, t)
 	return nil
 }
 
@@ -69,7 +77,7 @@ func ExistsUnspent(ts []Transaction) error {
 	return nil
 }
 
-func Delete(ts []Transaction) {
+func MarkIngested(ts []Transaction) {
 	for _, t := range ts {
 		memPool.Delete(t.Hash)
 		unspentTxs.Delete(t.PreviousHash)
