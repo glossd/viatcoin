@@ -8,12 +8,7 @@ import (
 	"time"
 )
 
-var maxDifficultyTarget = new(big.Int).SetBytes([]byte{
-	0x00, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-})
+var maxDifficultyTarget, _ = new(big.Int).SetString("00000000FFFF0000000000000000000000000000000000000000000000000000", 16)
 
 var firstTransaction = func() Transaction {
 	// todo serialize signed transaction and deserialize it here
@@ -59,12 +54,12 @@ type Block struct {
 // All fields are combined into an 80-byte block header.
 func (b Block) blockHeader() []byte {
 	buf := bytes.NewBuffer(make([]byte, 80))
-	buf.Write(uib(b.Version))
+	buf.Write(uiLE(b.Version))
 	buf.Write(b.PreviousHash)
 	buf.Write(b.MerkleRoot)
-	buf.Write(uib(b.Timestamp))
-	buf.Write(uib(b.DifficultyTargetBits))
-	buf.Write(uib(b.Nonce))
+	buf.Write(uiLE(b.Timestamp))
+	buf.Write(uiLE(b.DifficultyTargetBits))
+	buf.Write(uiLE(b.Nonce))
 	return buf.Bytes()
 }
 
@@ -72,43 +67,45 @@ func (b Block) Hash() []byte {
 	return doubleSHA256(b.blockHeader())
 }
 
+func (b Block) HashString() string {
+	return hex.EncodeToString(doubleSHA256(b.blockHeader()))
+}
+
 func (b Block) DifficultyTarget() *big.Int {
 	return bitsToTarget(b.DifficultyTargetBits)
 }
 
 func bitsToTarget(compact uint32) *big.Int {
-	exponent := compact >> 24         // first byte
-	coefficient := compact & 0xFFFFFF // 3 last bytes
-	target := new(big.Int).SetUint64(uint64(coefficient))
-	return target.Lsh(target, uint(8*(exponent-3)))
+	bitsBytes := uiBE(compact)
+	exponent := bitsBytes[0]
+	coefficient := bitsBytes[1:]
+	coefficientInt := new(big.Int).SetBytes(coefficient)
+	shift := exponent-3 // this number to shift coefficient left.
+	powered := new(big.Int).Exp(new(big.Int).SetInt64(256), new(big.Int).SetInt64(int64(shift)), nil)
+	return new(big.Int).Mul(coefficientInt, powered)
 }
 
 func BitsToDifficutly(compact uint32) float64 {
 	div := new(big.Float).Quo(new(big.Float).SetInt(maxDifficultyTarget), new(big.Float).SetInt(bitsToTarget(compact)))
 	res, _ := div.Float64()
 	return res
+	// target := bitsToTarget(compact)
+	// dif, _ := new(big.Int).Div(maxDifficultyTarget, target).Float64()
+	// return dif
 }
 
 // reverse of bitsToTarget
 func targetToBits(target *big.Int) uint32 {
-	size := uint32((target.BitLen() + 7) / 8) // Number of bytes required
-	var compact uint32
-
-	if size <= 3 {
-		compact = uint32(target.Uint64() << (8 * (3 - size)))
-	} else {
-		tmp := new(big.Int).Rsh(target, uint(8*(size-3))) // Shift right to fit in 3 bytes
-		compact = uint32(tmp.Uint64())
+	bs := target.Bytes()
+	coefficient := bs[0:3]
+	shift := len(bs[3:])
+	if bs[0] >= 80 {
+		coefficient = []byte{0, bs[0], bs[1]}
+		shift = len(bs[2:])
 	}
-
-	// Add exponent (size) as the first byte
-	if compact&0x00800000 != 0 {
-		compact >>= 8
-		size++
-	}
-
-	compact |= size << 24
-	return compact
+	exponent := shift + 3
+	bitsBytes := append([]byte{byte(exponent)}, coefficient...)
+	return BEui(bitsBytes)
 }
 
 func DiffucltyToBits(dif float64) uint32 {
@@ -129,10 +126,21 @@ func (b Block) Valid() bool {
 	return bi(hash).Cmp(b.DifficultyTarget()) <= 0
 }
 
-func uib(v uint32) []byte {
+// reversed order... 
+func uiLE(v uint32) []byte {
 	a := make([]byte, 4)
 	binary.LittleEndian.PutUint32(a, v)
 	return a
+}
+
+func uiBE(v uint32) []byte {
+	a := make([]byte, 4)
+	binary.BigEndian.PutUint32(a, v)
+	return a
+}
+
+func BEui(b []byte) uint32 {
+	return binary.BigEndian.Uint32(b)
 }
 
 func bi(v []byte) *big.Int {

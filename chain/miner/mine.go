@@ -50,7 +50,8 @@ func Start(cfg StartConfig) {
 	if err != nil {
 		panic("broadcasting valid block failed: %s" + err.Error())
 	} else {
-		fmt.Printf("broadcasted block, earned %.2f Viatcoins\n", minerReward.AsViatcoins())
+		fmt.Printf("broadcasted block, earned %.2f Viatcoins\n Hash: %s\n Diff: %064s\n\n",
+		 minerReward.AsViatcoins(), block.HashString(), block.DifficultyTarget().Text(16))
 	}
 	cfg.PreviousHash = coinbaseTx.Hash
 	Start(cfg)
