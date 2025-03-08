@@ -33,7 +33,7 @@ func Start(cfg StartConfig) {
 	}
 
 	pkAddress := cfg.Pk.PublicKey().Address(cfg.Network)
-	coinbaseTx, err := chain.NewTransaction(cfg.PreviousHash, newBalance, pkAddress, pkAddress).Sign(cfg.Pk)
+	coinbaseTx, err := chain.NewTransaction(cfg.PreviousHash, newBalance, pkAddress).Sign(cfg.Pk)
 	if err != nil {
 		panic("failed to sign coinbase transaction" + err.Error())
 	}

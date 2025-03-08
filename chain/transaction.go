@@ -44,18 +44,20 @@ type Transaction struct {
 	// todo add miner fee, for now only block reward
 }
 
-func NewTransaction(previousHash string, newBalance Coin, from, to string) Transaction {
+func NewTransaction(previousHash string, newBalance Coin, to string) Transaction {
 	return Transaction{
 		Version:      1,
 		Hash:         uuid.New().String(),
 		PreviousHash: previousHash,
-		From:         from, // from could've been populated during singuture, but From needs to be present during serialization so that we know it wasn't tempered after.
 		To:           to,
 		Balance:      newBalance,
 	}
 }
 
-func (t Transaction) Serialize() []byte {
+func (t Transaction) Serialize() ([]byte, error) {
+	if t.From == "" {
+		return nil, fmt.Errorf("can't serialize before signing")
+	}
 	var buf bytes.Buffer
 	enc := gob.NewEncoder(&buf)
 
@@ -64,31 +66,37 @@ func (t Transaction) Serialize() []byte {
 	copyT.PublicKey = nil
 	err := enc.Encode(copyT)
 	if err != nil {
-		panic("Serialize failed: " + err.Error())
+		return nil, fmt.Errorf("serialization: %s", err)
 	}
-	return buf.Bytes()
-}
-
-func (t Transaction) Hex() string {
-	return hex.EncodeToString(t.Serialize())
+	return buf.Bytes(), nil
 }
 
 func (t Transaction) DoubleSha256() []byte {
-	return doubleSHA256([]byte(t.Hex()))
+	ser, err := t.Serialize()
+	if err != nil {
+		return nil
+	}
+	return doubleSHA256([]byte(hex.EncodeToString(ser)))
 }
 
 func (t Transaction) Sign(key *PrivateKey) (Transaction, error) {
 	if key == nil {
 		return t, fmt.Errorf("key can't be nil")
 	}
+	// from is populated before serialization, so that we know it wasn't tempered after verification.
+	t.From = key.PublicKey().Address(network)
+	ser, err := t.Serialize()
+	if err != nil {
+		return t, err
+	}
 	// did I need to doubleSha256 the transaction data?
-	signature, err := key.Sign(t.Serialize())
+	signature, err := key.Sign(ser)
 	// I believe the signature is already DER encoded
 	if err != nil {
 		return t, fmt.Errorf("failed to sign: %s", err)
 	}
 	if t.From != key.PublicKey().Address(network) {
-		return t, fmt.Errorf("private key address doesn't match the transaction from address.")
+		return t, fmt.Errorf("private key address doesn't match the transaction from address")
 	}
 	t.Signature = signature
 	t.PublicKey = key.PublicKey().Bytes()
@@ -105,7 +113,11 @@ func (t Transaction) Verify() error {
 	if pubKeyAddr != t.From {
 		return fmt.Errorf("address of the public key '%s' didn't match transaction's address: %s", pubKeyAddr, t.From)
 	}
-	ok := pubKey.Verify(t.Serialize(), t.Signature)
+	ser, err := t.Serialize()
+	if err != nil {
+		return err
+	}
+	ok := pubKey.Verify(ser, t.Signature)
 	if !ok {
 		return fmt.Errorf("failed to verify")
 	}
