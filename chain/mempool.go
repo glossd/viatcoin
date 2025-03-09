@@ -10,8 +10,8 @@ import (
 // bitcoin is using levelDB. It's persistent kv-storage sorted by keys.
 var memPool = util.Map[string, Transaction]{}
 
-// set of unspent transaction. Bitcoin has unspent outputs.
-var unspentTxs = util.Map[string, Transaction]{}
+var wallets = util.Map[string, []int64]{}
+
 
 func Push(t Transaction) error {
 	err := verifyTx(t)
@@ -36,14 +36,15 @@ func verifyTx(t Transaction) error {
 		return fmt.Errorf("transaction doesn't match the one in mempool: %s", t.Hash)
 	}
 
-	previous, ok := GetUnspent(t.PreviousHash)
-	if !ok {
-		return fmt.Errorf("previous transaction is not unspent: %s", t.PreviousHash)
+	var fullAmount Coin
+	for _, tf := range t.Transfers {
+		fullAmount += tf.Amount
+	}
+	balance := Balance(t.From)
+	if fullAmount > balance {
+		return fmt.Errorf("the amount in trasfers exceeded wallet balance, required=%f, balance=%f", fullAmount.AsViatcoins(), balance.AsViatcoins())
 	}
 
-	if previous.Balance >= t.Balance {
-		return fmt.Errorf("previous transaction balance must be less than old one")
-	}
 	return nil
 }
 
@@ -51,8 +52,17 @@ func Get(hash string) (Transaction, bool) {
 	return memPool.Load(hash)
 }
 
-func GetUnspent(hash string) (Transaction, bool) {
-	return unspentTxs.Load(hash)
+func Balance(address string) Coin {
+	amounts, _ := wallets.Load(address)
+	var balance Coin
+	for _, a := range amounts {
+		if a >= 0 {
+			balance += Coin(a)
+		} else {
+			balance -= Coin(-a)
+		}
+	}
+	return balance
 }
 
 func Top(num int) []Transaction {
@@ -72,7 +82,13 @@ func Top(num int) []Transaction {
 func MarkIngested(ts []Transaction) {
 	for _, t := range ts {
 		memPool.Delete(t.Hash)
-		unspentTxs.Delete(t.PreviousHash)
-		unspentTxs.Store(t.Hash, t)
+		var transferSum int64
+		for _, tf := range t.Transfers {
+			amounts, _ := wallets.Load(tf.To)
+			wallets.Store(tf.To, append(amounts, int64(tf.Amount)))
+			transferSum += int64(tf.Amount)
+		}
+		amounts, _ := wallets.Load(t.From)
+		wallets.Store(t.From, append(amounts, -transferSum))
 	}
 }

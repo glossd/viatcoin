@@ -19,24 +19,20 @@ const (
 )
 
 func (c Coin) AsViatcoins() float64 {
-	res, _ := new(big.Int).Div(new(big.Int).SetUint64(uint64(c)), new(big.Int).SetInt64(1e8)).Float64()
+	res, _ := new(big.Float).Quo(new(big.Float).SetUint64(uint64(c)), new(big.Float).SetInt64(1e8)).Float64()
 	return res
 }
 
 // I did not like UTXOs, they really made the transactions complicated.
-// Each transaction acts as one Input and one Output.
+// Each transaction is address-based.
 
 type Transaction struct {
 	Version uint32
-
-	Hash         string
-	PreviousHash string
+	Hash    string
 	// filled with Sign
 	From string
 
-	To string
-	// Updated Balance. OldBalance - Balance = Amount of coins to send to To.
-	Balance Coin
+	Transfers []Transfer
 
 	// ScriptSig is divided
 	Signature []byte
@@ -44,13 +40,24 @@ type Transaction struct {
 	// todo add miner fee, for now only block reward
 }
 
-func NewTransaction(previousHash string, newBalance Coin, to string) Transaction {
+type Transfer struct {
+	To     string
+	Amount Coin
+}
+
+func NewTransactionS(to string, amount Coin) Transaction {
 	return Transaction{
-		Version:      1,
-		Hash:         uuid.New().String(),
-		PreviousHash: previousHash,
-		To:           to,
-		Balance:      newBalance,
+		Version:   1,
+		Hash:      uuid.New().String(),
+		Transfers: []Transfer{{To: to, Amount: amount}},
+	}
+}
+
+func NewTransaction(to []Transfer) Transaction {
+	return Transaction{
+		Version:   1,
+		Hash:      uuid.New().String(),
+		Transfers: to,
 	}
 }
 

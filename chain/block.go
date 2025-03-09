@@ -18,7 +18,7 @@ var firstTransaction = func() Transaction {
 	}
 	pk := PrivateKeyFromBytes(pkBytes)
 	address := pk.PublicKey().Address(network)
-	tx, err := NewTransaction("", 50*Viatcoin, address).Sign(pk)
+	tx, err := NewTransactionS(address, 50*Viatcoin).Sign(pk)
 	if err != nil {
 		panic(err)
 	}

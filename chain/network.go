@@ -49,18 +49,8 @@ func Broadcast(b Block) error {
 	if err := coinbase.Verify(); err != nil {
 		return fmt.Errorf("coinbase transaction is invalid: %s", err)
 	}
-	if coinbase.PreviousHash == "" {
-		if coinbase.Balance != GetMinerReward() {
-			return fmt.Errorf("new coinbase balance doesn't match miner reward")
-		}
-	} else {
-		unspent, ok := GetUnspent(coinbase.PreviousHash)
-		if !ok {
-			return fmt.Errorf("previous hash of coinbase is not found")
-		}
-		if coinbase.Balance != unspent.Balance+GetMinerReward() {
-			return fmt.Errorf("coinbase miner reward doesn't add up with previous transaction")
-		}
+	if len(coinbase.Transfers) != 1 || coinbase.Transfers[0].Amount != GetMinerReward() {
+		return fmt.Errorf("coinbase transfer amount doesn't match miner reward")
 	}
 
 	for _, tx := range b.Transactions[1:] {

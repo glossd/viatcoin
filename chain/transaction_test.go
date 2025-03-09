@@ -2,13 +2,11 @@ package chain
 
 import (
 	"testing"
-
-	"github.com/google/uuid"
 )
 
 func TestProveTransactionOwnership(t *testing.T) {
 	privKey := mustPrivKey()
-	tx := NewTransaction(uuid.New().String(), 0, mustPrivKey().PublicKey().Address(Mainnet))
+	tx := NewTransactionS(mustPrivKey().PublicKey().Address(Mainnet), 1)
 	_, err := tx.Serialize()
 	if err == nil {
 		t.Error("should be allowed to serialize before signing")

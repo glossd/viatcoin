@@ -11,7 +11,6 @@ import (
 type StartConfig struct {
 	Pk           *chain.PrivateKey // required
 	Network      chain.Net         // defaults to Mainnet
-	PreviousHash string            // optional if pk doesn't have any transactions
 }
 
 func Start(cfg StartConfig) {
@@ -22,18 +21,9 @@ func Start(cfg StartConfig) {
 	txs := chain.Top(999)
 	difTargetBits := chain.GetDiffuctlyTargetBits()
 
-	minerReward := chain.GetMinerReward()
-	newBalance := minerReward
-	if cfg.PreviousHash != "" {
-		t, ok := chain.GetUnspent(cfg.PreviousHash)
-		if !ok {
-			panic("previous transaction is not unspent")
-		}
-		newBalance += t.Balance
-	}
-
 	pkAddress := cfg.Pk.PublicKey().Address(cfg.Network)
-	coinbaseTx, err := chain.NewTransaction(cfg.PreviousHash, newBalance, pkAddress).Sign(cfg.Pk)
+	minerReward := chain.GetMinerReward()
+	coinbaseTx, err := chain.NewTransactionS(pkAddress, minerReward).Sign(cfg.Pk)
 	if err != nil {
 		panic("failed to sign coinbase transaction" + err.Error())
 	}
@@ -51,9 +41,8 @@ func Start(cfg StartConfig) {
 		panic("broadcasting valid block failed: %s" + err.Error())
 	} else {
 		fmt.Printf("broadcasted block, earned %.2f Viatcoins\n Hash: %s\n Diff: %064s\n\n",
-		 minerReward.AsViatcoins(), block.HashString(), block.DifficultyTarget().Text(16))
+			minerReward.AsViatcoins(), block.HashString(), block.DifficultyTarget().Text(16))
 	}
-	cfg.PreviousHash = coinbaseTx.Hash
 	Start(cfg)
 }
 
