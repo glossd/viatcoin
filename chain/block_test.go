@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/big"
 	"testing"
+	"time"
 )
 
 var maxDifficultyTargetBits uint32 = 0x1D00FFFF
@@ -52,7 +53,7 @@ func TestBitsToTarget(t *testing.T) {
 }
 
 func TestBitsToDifficulty(t *testing.T) {
-	if BitsToDifficutly(maxDifficultyTargetBits) != 1.0 {
+	if BitsToDifficutly(maxDifficultyTargetBits).Cmp(new(big.Float).SetInt64(1)) != 0 {
 		t.Error("max diff bits didn't match")
 	}
 
@@ -63,13 +64,40 @@ func TestBitsToDifficulty(t *testing.T) {
 }
 
 func TestDifficultyToBits(t *testing.T) {
-	if DiffucltyToBits(1) != maxDifficultyTargetBits {
+	if DiffucltyToBits(new(big.Float).SetInt64(1)) != maxDifficultyTargetBits {
 		t.Error("max diff didn't match")
 	}
 
-	difficutly := 1000012.0
+	var dif int64 = 1000012
+	difficutly := new(big.Float).SetInt64(dif)
 	reversed := BitsToDifficutly(DiffucltyToBits(difficutly))
-	if int(difficutly) != int(reversed) { // target doesn't have floating point
-		t.Errorf("reversal didn't work, got=%v", int(reversed))
+	reversedRounded, _ := reversed.Int64() // target doesn't have floating point
+	if reversedRounded != dif {
+		t.Errorf("reversal didn't work, got=%v", reversed)
+	}
+}
+
+func TestAdjustDifficulty(t *testing.T) {
+	t.Cleanup(func() {
+		clear(blockchain)
+	})
+	const d = 1e-10
+	diffic := new(big.Float).SetFloat64(d) // basically any block hash will do
+	pk := mustPrivKey()
+	ct, err := NewTransactionS(pk.PublicKey().Address(Mainnet), GetMinerReward()).Sign(pk)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := NewBlock(genesisBlock.PreviousHash, []Transaction{ct}, DiffucltyToBits(diffic))
+	if !b.Valid() {
+		t.Fatalf("block invalid: %v", b)
+	}
+	b.Timestamp = uint32(time.Now().Unix() + 1) // otherwise genesis will have the same timestamp
+	err = doBroadcast(b, diffic, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if diffic.Cmp(new(big.Float).SetFloat64(d)) != 1 {
+		t.Error("difficulty should've increased after one block: ", diffic.String())
 	}
 }

@@ -48,7 +48,6 @@ func Start(cfg StartConfig) {
 
 func searchForValidBlock(last chain.Block, txs []chain.Transaction, difTarBits uint32) chain.Block {
 	b := chain.NewBlock(last.PreviousHash, txs, difTarBits)
-	// todo add coinbase transaction
 	n, ok := bruteForceNonce(b)
 	if ok {
 		b.Nonce = n

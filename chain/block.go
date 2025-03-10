@@ -28,7 +28,7 @@ var genesisBlock = Block{
 	Version:              1,
 	PreviousHash:         []byte{},
 	MerkleRoot:           calcMerkelRoot([]Transaction{firstTransaction}),
-	Timestamp:            1231006505,
+	Timestamp:            uint32(time.Now().Unix()),
 	Nonce:                2083236893,
 	DifficultyTargetBits: targetToBits(maxDifficultyTarget),
 	Transactions:         []Transaction{firstTransaction},
@@ -85,13 +85,8 @@ func bitsToTarget(compact uint32) *big.Int {
 	return new(big.Int).Mul(coefficientInt, powered)
 }
 
-func BitsToDifficutly(compact uint32) float64 {
-	div := new(big.Float).Quo(new(big.Float).SetInt(maxDifficultyTarget), new(big.Float).SetInt(bitsToTarget(compact)))
-	res, _ := div.Float64()
-	return res
-	// target := bitsToTarget(compact)
-	// dif, _ := new(big.Int).Div(maxDifficultyTarget, target).Float64()
-	// return dif
+func BitsToDifficutly(compact uint32) *big.Float {
+	return new(big.Float).Quo(new(big.Float).SetInt(maxDifficultyTarget), new(big.Float).SetInt(bitsToTarget(compact)))
 }
 
 // reverse of bitsToTarget
@@ -108,8 +103,8 @@ func targetToBits(target *big.Int) uint32 {
 	return BEui(bitsBytes)
 }
 
-func DiffucltyToBits(dif float64) uint32 {
-	diffTargetFloat := new(big.Float).Quo(new(big.Float).SetInt(maxDifficultyTarget), big.NewFloat(dif))
+func DiffucltyToBits(dif *big.Float) uint32 {
+	diffTargetFloat := new(big.Float).Quo(new(big.Float).SetInt(maxDifficultyTarget), dif)
 	diffTarget := new(big.Int)
 	diffTargetFloat.Int(diffTarget)
 	return targetToBits(diffTarget)

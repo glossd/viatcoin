@@ -3,6 +3,7 @@ package chain
 import (
 	"fmt"
 	"math"
+	"math/big"
 )
 
 type Net byte
@@ -18,8 +19,9 @@ func SetNetwork(net Net) {
 	network = net
 }
 
-// todo adjust mining difficulty every 2,016 blocks (~2 weeks) to keep block times around 10 minutes.
-var difficulty = 1.0
+// adjust mining difficulty every 2,016 blocks (~2 weeks) to keep block times around 10 minutes.
+var difficulty = new(big.Float).SetFloat64(1.0)
+const NumBlocksAdjust = 2016
 
 var originalMinerReward = 50 * Viatcoin
 
@@ -38,9 +40,15 @@ func GetDiffuctlyTargetBits() uint32 {
 }
 
 func Broadcast(b Block) error {
+	return doBroadcast(b, difficulty, NumBlocksAdjust)
+}
+
+func doBroadcast(b Block, diff *big.Float, numOfBlocksBeforeAdjust int) error {
 	if !b.Valid() {
 		return fmt.Errorf("invalid block")
 	}
+	// todo check the timestamps
+	// check previous hash
 	if len(b.Transactions) == 0 {
 		return fmt.Errorf("block must have at least one coinbase transaction")
 	}
@@ -59,5 +67,13 @@ func Broadcast(b Block) error {
 
 	MarkIngested(b.Transactions)
 	blockchain = append(blockchain, b)
+
+	if len(blockchain) % numOfBlocksBeforeAdjust == 0 { // genesis block is hard-coded not broadcasted
+		first := blockchain[len(blockchain)-numOfBlocksBeforeAdjust]
+		last := blockchain[len(blockchain)-1]
+		actualTime := new(big.Float).SetInt64(int64(last.Timestamp - first.Timestamp))
+		expectedTime := new(big.Float).SetInt64(10*60*int64(numOfBlocksBeforeAdjust))
+		diff.Mul(diff, new(big.Float).Quo(expectedTime, actualTime))
+	}
 	return nil
 }
