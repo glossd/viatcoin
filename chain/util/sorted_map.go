@@ -28,6 +28,9 @@ func (sm *SortedMap[K, V]) Delete(key K) {
 
 	delete(sm.inner, key)
 	i := slices.Index(sm.order, key)
+	if i == -1 {
+		return
+	}
 	_ = slices.Delete(sm.order, i, i+1)
 }
 func (sm *SortedMap[K, V]) Load(key K) (value V, ok bool) {
