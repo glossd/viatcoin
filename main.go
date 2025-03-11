@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/glossd/viatcoin/chain"
-	"github.com/glossd/viatcoin/chain/miner"
+	"github.com/glossd/viatcoin/miner"
 )
 
 func main() {

@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+
+	"github.com/glossd/viatcoin/chain/util"
 )
 
 type Net byte
@@ -25,14 +27,18 @@ const NumBlocksAdjust = 2016
 
 var originalMinerReward = 50 * Viatcoin
 
-var blockchain = []Block{genesisBlock}
+var blockchain = util.SortedMap[string, Block]{}
+
+func init() {
+	blockchain.Store(genesisBlock.HashString(), genesisBlock)
+}
 
 func GetLastBlock() Block {
-	return blockchain[len(blockchain)-1]
+	return blockchain.Last()
 }
 
 func GetMinerReward() Coin {
-	return originalMinerReward / Coin(math.Pow(2, float64(len(blockchain)/210_000)))
+	return originalMinerReward / Coin(math.Pow(2, float64(blockchain.Len()/210_000)))
 }
 
 func GetDiffuctlyTargetBits() uint32 {
@@ -66,11 +72,11 @@ func doBroadcast(b Block, diff *big.Float, numOfBlocksBeforeAdjust int) error {
 	}
 
 	MarkIngested(b.Transactions)
-	blockchain = append(blockchain, b)
+	blockchain.Store(b.HashString(), b)
 
-	if len(blockchain) % numOfBlocksBeforeAdjust == 0 { // genesis block is hard-coded not broadcasted
-		first := blockchain[len(blockchain)-numOfBlocksBeforeAdjust]
-		last := blockchain[len(blockchain)-1]
+	if blockchain.Len() % numOfBlocksBeforeAdjust == 0 { // genesis block is hard-coded not broadcasted
+		first := blockchain.LoadIndex(blockchain.Len() - numOfBlocksBeforeAdjust)
+		last := blockchain.Last()
 		actualTime := new(big.Float).SetInt64(int64(last.Timestamp - first.Timestamp))
 		expectedTime := new(big.Float).SetInt64(10*60*int64(numOfBlocksBeforeAdjust))
 		diff.Mul(diff, new(big.Float).Quo(expectedTime, actualTime))

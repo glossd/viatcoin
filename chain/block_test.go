@@ -79,7 +79,7 @@ func TestDifficultyToBits(t *testing.T) {
 
 func TestAdjustDifficulty(t *testing.T) {
 	t.Cleanup(func() {
-		clear(blockchain)
+		blockchain.Clear()
 	})
 	const d = 1e-10
 	diffic := new(big.Float).SetFloat64(d) // basically any block hash will do

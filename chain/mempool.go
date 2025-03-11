@@ -8,7 +8,7 @@ import (
 )
 
 // bitcoin is using levelDB. It's persistent kv-storage sorted by keys.
-var memPool = util.Map[string, Transaction]{}
+var memPool = util.SortedMap[string, Transaction]{}
 
 var wallets = util.Map[string, []int64]{}
 
@@ -19,7 +19,10 @@ func Push(t Transaction) error {
 		return err
 	}
 
-	memPool.LoadOrStore(t.Hash, t)
+	_, ok := memPool.LoadOrStore(t.Hash, t)
+	if ok {
+		return fmt.Errorf("transaciont already exists: %s", t.Hash)
+	}
 	return nil
 }
 
@@ -66,17 +69,10 @@ func Balance(address string) Coin {
 }
 
 func Top(num int) []Transaction {
-	var res []Transaction
-	memPool.Range(func(key string, value Transaction) bool {
-		if num == 0 {
-			return false
-		}
-		res = append(res, value)
-		num--
-		return true
-	})
-
-	return res
+	if memPool.Len() < num {
+		num = memPool.Len()
+	}
+	return memPool.LoadRange(0, num)
 }
 
 func MarkIngested(ts []Transaction) {
