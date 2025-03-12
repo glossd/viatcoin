@@ -1,13 +1,14 @@
 package chain
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/glossd/fetch"
 )
 
-func Run() {
+func RunAPI(port int) {
 	sm := &http.ServeMux{}
 
 	sm.HandleFunc("GET /api/blocks", fetch.ToHandlerFunc(func(in fetch.Request[fetch.Empty]) ([]Block, error)  {
@@ -25,7 +26,7 @@ func Run() {
 			j = skip
 			i = j + limit
 		}
-		return blockchain.LoadRange(i, j), nil
+		return blockchain.LoadRangeSafe(i, j), nil
 	}))
 
 	sm.HandleFunc("GET /api/blocks/search", fetch.ToHandlerFunc(func(in fetch.Request[fetch.Empty]) (Block, error)  {
@@ -68,7 +69,7 @@ func Run() {
 		return Push(in)
 	}))
 
-	
+
 
 	sm.HandleFunc("/api/difficulty/target/bits", fetch.ToHandlerFuncEmptyIn(func() (uint32, error)  {
 		return GetDiffuctlyTargetBits(), nil
@@ -78,5 +79,5 @@ func Run() {
 		return uint64(GetMinerReward()), nil
 	}))
 
-	http.ListenAndServe(":8080", sm)
+	http.ListenAndServe(fmt.Sprintf(":%d", port), sm)
 }

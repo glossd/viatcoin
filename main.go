@@ -6,9 +6,11 @@ import (
 )
 
 func main() {
+	go chain.RunAPI(8080)
+
 	pk, err := chain.NewPrivateKey()
 	if err != nil {
 		panic(err)
 	}
-	miner.Start(miner.StartConfig{Pk: pk})
+	miner.Start(miner.StartConfig{Pk: pk, ApiUrl: "localhost:8080"})
 }

@@ -47,6 +47,8 @@ type Block struct {
 	// Taken from the network.
 	// DifficultyTarget is calculated from these bits. And Difficulty can be calculated from DifficultyTarget.
 	DifficultyTargetBits uint32
+	// cache for DifficultyTarget
+	difficultyTarget *big.Int
 	// Taken from the mempool
 	Transactions []Transaction
 }
@@ -72,7 +74,12 @@ func (b Block) HashString() string {
 }
 
 func (b Block) DifficultyTarget() *big.Int {
-	return bitsToTarget(b.DifficultyTargetBits)
+	if b.difficultyTarget != nil {
+		return b.difficultyTarget
+	}
+
+	b.difficultyTarget = bitsToTarget(b.DifficultyTargetBits)
+	return b.difficultyTarget
 }
 
 func bitsToTarget(compact uint32) *big.Int {

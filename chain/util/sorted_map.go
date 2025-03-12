@@ -71,6 +71,25 @@ func (sm *SortedMap[K, V]) LoadRange(i, j int) []V {
 	return res
 }
 
+// sm[i:j]
+func (sm *SortedMap[K, V]) LoadRangeSafe(i, j int) []V {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	sm.init()
+
+	var res []V
+	if i < 0 {
+		i = 0
+	}
+	if j > len(sm.order) {
+		j = len(sm.order)
+	} 
+	for _, key := range sm.order[i:j] {
+		res = append(res, sm.inner[key])
+	}
+	return res
+}
+
 func (sm *SortedMap[K, V]) Store(key K, value V) { 
 	sm.mu.Lock()
 	defer sm.mu.Unlock()

@@ -88,7 +88,7 @@ func TestAdjustDifficulty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b := NewBlock(genesisBlock.PreviousHash, []Transaction{ct}, DiffucltyToBits(diffic))
+	b := NewBlock(genesisBlock.Hash(), []Transaction{ct}, DiffucltyToBits(diffic))
 	if !b.Valid() {
 		t.Fatalf("block invalid: %v", b)
 	}

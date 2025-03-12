@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"math/big"
+	"reflect"
 
 	"github.com/glossd/viatcoin/chain/util"
 )
@@ -22,7 +23,7 @@ func SetNetwork(net Net) {
 }
 
 // adjust mining difficulty every 2,016 blocks (~2 weeks) to keep block times around 10 minutes.
-var difficulty = new(big.Float).SetFloat64(1.0)
+var difficulty = new(big.Float).SetFloat64(0.001)
 const NumBlocksAdjust = 2016
 
 var originalMinerReward = 50 * Viatcoin
@@ -53,8 +54,10 @@ func doBroadcast(b Block, diff *big.Float, numOfBlocksBeforeAdjust int) error {
 	if !b.Valid() {
 		return fmt.Errorf("invalid block")
 	}
+	if !reflect.DeepEqual(b.PreviousHash, blockchain.Last().Hash()) {
+		return fmt.Errorf("invalid previous hash")
+	}
 	// todo check the timestamps
-	// check previous hash
 	if len(b.Transactions) == 0 {
 		return fmt.Errorf("block must have at least one coinbase transaction")
 	}
