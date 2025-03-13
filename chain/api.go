@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+	"math"
 	"net/http"
 	"strconv"
 
@@ -11,14 +12,14 @@ import (
 func RunAPI(port int) {
 	sm := &http.ServeMux{}
 
-	sm.HandleFunc("GET /api/blocks", fetch.ToHandlerFunc(func(in fetch.Request[fetch.Empty]) ([]Block, error)  {
+	sm.HandleFunc("GET /api/blocks", fetch.ToHandlerFunc(func(in fetch.RequestEmpty) ([]Block, error) {
 		sort := in.Parameters["sort"]
 		limit, err := strconv.Atoi(in.Parameters["limit"])
 		if err != nil {
 			limit = 20
 		}
 		skip, _ := strconv.Atoi(in.Parameters["skip"])
-		
+
 		// order descending
 		j := blockchain.Len() - skip
 		i := j - limit
@@ -29,7 +30,7 @@ func RunAPI(port int) {
 		return blockchain.LoadRangeSafe(i, j), nil
 	}))
 
-	sm.HandleFunc("GET /api/blocks/search", fetch.ToHandlerFunc(func(in fetch.Request[fetch.Empty]) (Block, error)  {
+	sm.HandleFunc("GET /api/blocks/search", fetch.ToHandlerFunc(func(in fetch.RequestEmpty) (Block, error) {
 		b, ok := blockchain.Load(in.Parameters["hash"])
 		if ok {
 			return b, nil
@@ -42,11 +43,19 @@ func RunAPI(port int) {
 			}
 			return blockchain.LoadIndex(i), nil
 		}
-		
+
 		return Block{}, &fetch.Error{Status: 404, Msg: "block not found"}
 	}))
 
-	sm.HandleFunc("GET /api/blocks/last", fetch.ToHandlerFuncEmptyIn(func() (Block, error)  {
+	sm.HandleFunc("GET /api/sync", fetch.ToHandlerFunc(func(in fetch.Empty) (SyncData, error) {
+		return SyncData{
+			Blocks:  blockchain.LoadRangeSafe(0, math.MaxInt),
+			MemPool: Top(math.MaxInt),
+			Wallets: wallets.AsMap(),
+		}, nil
+	}))
+
+	sm.HandleFunc("GET /api/blocks/last", fetch.ToHandlerFuncEmptyIn(func() (Block, error) {
 		return blockchain.Last(), nil
 	}))
 
@@ -54,9 +63,7 @@ func RunAPI(port int) {
 		return Broadcast(in)
 	}))
 
-
-	
-	sm.HandleFunc("GET /api/mempool", fetch.ToHandlerFunc(func(in fetch.Request[fetch.Empty]) ([]Transaction, error)  {
+	sm.HandleFunc("GET /api/mempool", fetch.ToHandlerFunc(func(in fetch.Request[fetch.Empty]) ([]Transaction, error) {
 		limit, err := strconv.Atoi(in.Parameters["limit"])
 		if err != nil {
 			limit = 20
@@ -69,13 +76,11 @@ func RunAPI(port int) {
 		return Push(in)
 	}))
 
-
-
-	sm.HandleFunc("/api/difficulty/target/bits", fetch.ToHandlerFuncEmptyIn(func() (uint32, error)  {
+	sm.HandleFunc("/api/difficulty/target/bits", fetch.ToHandlerFuncEmptyIn(func() (uint32, error) {
 		return GetDiffuctlyTargetBits(), nil
 	}))
 
-	sm.HandleFunc("/api/reward", fetch.ToHandlerFuncEmptyIn(func() (uint64, error)  {
+	sm.HandleFunc("/api/reward", fetch.ToHandlerFuncEmptyIn(func() (uint64, error) {
 		return uint64(GetMinerReward()), nil
 	}))
 

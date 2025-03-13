@@ -29,3 +29,12 @@ func (m *Map[K, V]) Range(f func(key K, value V) bool) {
 	m.m.Range(func(key, value any) bool { return f(key.(K), value.(V)) })
 }
 func (m *Map[K, V]) Store(key K, value V) { m.m.Store(key, value) }
+
+func (m *Map[K, V]) AsMap() map[K]V {
+	res := make(map[K]V)
+	m.Range(func(k K, v V) bool {
+		res[k] = v
+		return true
+	})
+	return res
+}
