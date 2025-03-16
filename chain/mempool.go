@@ -19,9 +19,9 @@ func Push(t Transaction) error {
 		return err
 	}
 
-	_, ok := memPool.LoadOrStore(t.Hash, t)
+	_, ok := memPool.LoadOrStore(t.ID, t)
 	if ok {
-		return fmt.Errorf("transaciont already exists: %s", t.Hash)
+		return fmt.Errorf("transaciont already exists: %s", t.ID)
 	}
 	return nil
 }
@@ -31,12 +31,12 @@ func verifyTx(t Transaction) error {
 		return err
 	}
 
-	mt, ok := memPool.Load(t.Hash)
+	mt, ok := memPool.Load(t.ID)
 	if !ok {
-		return fmt.Errorf("transaction is not in the mempool: %s", t.Hash)
+		return fmt.Errorf("transaction is not in the mempool: %s", t.ID)
 	}
 	if reflect.DeepEqual(t, mt) {
-		return fmt.Errorf("transaction doesn't match the one in mempool: %s", t.Hash)
+		return fmt.Errorf("transaction doesn't match the one in mempool: %s", t.ID)
 	}
 
 	var fullAmount Coin
@@ -83,7 +83,7 @@ func Top(num int) []Transaction {
 
 func MarkIngested(ts []Transaction) {
 	for _, t := range ts {
-		memPool.Delete(t.Hash)
+		memPool.Delete(t.ID)
 		var transferSum int64
 		for _, tf := range t.Transfers {
 			amounts, _ := wallets.Load(tf.To)

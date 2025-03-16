@@ -28,7 +28,7 @@ func (c Coin) AsViatcoins() float64 {
 
 type Transaction struct {
 	Version uint32
-	Hash    string
+	ID      string
 	// filled with Sign
 	From string
 
@@ -48,7 +48,7 @@ type Transfer struct {
 func NewTransactionS(to string, amount Coin) Transaction {
 	return Transaction{
 		Version:   1,
-		Hash:      uuid.New().String(),
+		ID:        uuid.New().String(),
 		Transfers: []Transfer{{To: to, Amount: amount}},
 	}
 }
@@ -56,7 +56,7 @@ func NewTransactionS(to string, amount Coin) Transaction {
 func NewTransaction(to []Transfer) Transaction {
 	return Transaction{
 		Version:   1,
-		Hash:      uuid.New().String(),
+		ID:        uuid.New().String(),
 		Transfers: to,
 	}
 }

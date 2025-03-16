@@ -47,12 +47,8 @@ func RunAPI(port int) {
 		return Block{}, &fetch.Error{Status: 404, Msg: "block not found"}
 	}))
 
-	sm.HandleFunc("GET /api/sync", fetch.ToHandlerFunc(func(in fetch.Empty) (SyncData, error) {
-		return SyncData{
-			Blocks:  blockchain.LoadRangeSafe(0, math.MaxInt),
-			MemPool: Top(math.MaxInt),
-			Wallets: wallets.AsMap(),
-		}, nil
+	sm.HandleFunc("GET /api/blocks/all", fetch.ToHandlerFunc(func(in fetch.Empty) ([]Block, error) {
+		return blockchain.LoadRangeSafe(0, math.MaxInt), nil
 	}))
 
 	sm.HandleFunc("GET /api/blocks/last", fetch.ToHandlerFuncEmptyIn(func() (Block, error) {
@@ -67,6 +63,9 @@ func RunAPI(port int) {
 		limit, err := strconv.Atoi(in.Parameters["limit"])
 		if err != nil {
 			limit = 20
+		}
+		if limit == -1 {
+			return Top(math.MaxInt), nil
 		}
 
 		return Top(limit), nil
