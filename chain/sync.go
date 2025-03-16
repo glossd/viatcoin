@@ -5,8 +5,20 @@ import (
 	"github.com/glossd/fetch"
 )
 
-func DownloadFrom(apiUrl string) error {
-	blocks, err := fetch.Get[[]Block](apiUrl + "/api/block/all")
+func Sync(apiUrl string) error {
+	err := downloadBlocks(apiUrl)
+	if err != nil {
+		return err
+	}
+	err = downloadMempool(apiUrl)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func downloadBlocks(apiUrl string) error {
+	blocks, err := fetch.Get[[]Block](apiUrl + "/api/block?sort=asc&limit=-1")
 	if err != nil {
 		return err
 	}
@@ -29,7 +41,20 @@ func DownloadFrom(apiUrl string) error {
 		blockchain.Store(block.HashString(), block)
 	}
 
-	// todo download mempool
 	// todo synchronization must be constant.
+	return nil
+}
+
+func downloadMempool(apiUrl string) error {
+	txs, err := fetch.Get[[]Transaction](apiUrl+"/api/mempool?limit=-1", fetch.Config{})
+	if err != nil {
+		return err
+	}
+	for _, tx := range txs {
+		err := Push(tx)
+		if err != nil {
+			return fmt.Errorf("failed to add to mempool: %s, tx_id=%s", err, tx.ID)
+		}
+	}
 	return nil
 }

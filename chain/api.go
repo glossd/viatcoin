@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math"
 	"net/http"
+	"slices"
 	"strconv"
 
 	"github.com/glossd/fetch"
@@ -18,16 +19,23 @@ func RunAPI(port int) {
 		if err != nil {
 			limit = 20
 		}
+		if limit == -1 {
+			limit = math.MaxInt
+		}
 		skip, _ := strconv.Atoi(in.Parameters["skip"])
 
-		// order descending
-		j := blockchain.Len() - skip
-		i := j - limit
 		if sort == "asc" {
-			j = skip
-			i = j + limit
+			j := skip
+			i := j + limit
+			return blockchain.LoadRangeSafe(i, j), nil
+		} else {
+			// descending
+			j := blockchain.Len() - skip
+			i := j - limit
+			res := blockchain.LoadRangeSafe(i, j)
+			slices.Reverse(res)
+			return res, nil
 		}
-		return blockchain.LoadRangeSafe(i, j), nil
 	}))
 
 	sm.HandleFunc("GET /api/blocks/search", fetch.ToHandlerFunc(func(in fetch.RequestEmpty) (Block, error) {
@@ -45,10 +53,6 @@ func RunAPI(port int) {
 		}
 
 		return Block{}, &fetch.Error{Status: 404, Msg: "block not found"}
-	}))
-
-	sm.HandleFunc("GET /api/blocks/all", fetch.ToHandlerFunc(func(in fetch.Empty) ([]Block, error) {
-		return blockchain.LoadRangeSafe(0, math.MaxInt), nil
 	}))
 
 	sm.HandleFunc("GET /api/blocks/last", fetch.ToHandlerFuncEmptyIn(func() (Block, error) {

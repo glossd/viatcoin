@@ -2,8 +2,6 @@ package chain
 
 import (
 	"fmt"
-	"reflect"
-
 	"github.com/glossd/viatcoin/chain/util"
 )
 
@@ -29,14 +27,6 @@ func Push(t Transaction) error {
 func verifyTx(t Transaction) error {
 	if err := t.Verify(); err != nil {
 		return err
-	}
-
-	mt, ok := memPool.Load(t.ID)
-	if !ok {
-		return fmt.Errorf("transaction is not in the mempool: %s", t.ID)
-	}
-	if reflect.DeepEqual(t, mt) {
-		return fmt.Errorf("transaction doesn't match the one in mempool: %s", t.ID)
 	}
 
 	var fullAmount Coin
