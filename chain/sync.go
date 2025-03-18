@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/glossd/fetch"
+	"math/big"
 )
 
 func Sync(apiUrl string) error {
@@ -16,8 +17,19 @@ func Sync(apiUrl string) error {
 		return err
 	}
 	// todo synchronization must be constant
+
 	// todo Longest Chain Rule
+	// compare TotalWork of the blockchains
+	// Multiple valid chains may exist at the same time, but one eventually will outgrow another.
 	return nil
+}
+
+func TotalWork(blocks []Block) *big.Int {
+	acc := new(big.Int)
+	for _, block := range blocks {
+		acc.Add(acc, block.Work())
+	}
+	return acc
 }
 
 func downloadBlocks(apiUrl string) error {

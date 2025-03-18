@@ -87,7 +87,7 @@ func bitsToTarget(compact uint32) *big.Int {
 	exponent := bitsBytes[0]
 	coefficient := bitsBytes[1:]
 	coefficientInt := new(big.Int).SetBytes(coefficient)
-	shift := exponent-3 // this number to shift coefficient left.
+	shift := exponent - 3 // this number to shift coefficient left.
 	powered := new(big.Int).Exp(new(big.Int).SetInt64(256), new(big.Int).SetInt64(int64(shift)), nil)
 	return new(big.Int).Mul(coefficientInt, powered)
 }
@@ -128,7 +128,13 @@ func (b Block) Valid() bool {
 	return bi(hash).Cmp(b.DifficultyTarget()) <= 0
 }
 
-// reversed order... 
+func (b Block) Work() *big.Int {
+	sha256NumOfVariations := new(big.Int).Exp(new(big.Int).SetInt64(2), new(big.Int).SetInt64(256), nil)
+	// more difficulty more work done.
+	return new(big.Int).Div(sha256NumOfVariations, b.DifficultyTarget())
+}
+
+// reversed order...
 func uiLE(v uint32) []byte {
 	a := make([]byte, 4)
 	binary.LittleEndian.PutUint32(a, v)
