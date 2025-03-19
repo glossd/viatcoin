@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+	"github.com/glossd/memmq"
 	"math"
 	"math/big"
 	"reflect"
@@ -24,6 +25,7 @@ func SetNetwork(net Net) {
 
 // adjust mining difficulty every 2,016 blocks (~2 weeks) to keep block times around 10 minutes.
 var difficulty = new(big.Float).SetFloat64(0.001)
+
 const NumBlocksAdjust = 2016
 
 var originalMinerReward = 50 * Viatcoin
@@ -74,15 +76,23 @@ func doBroadcast(b Block, diff *big.Float, numOfBlocksBeforeAdjust int) error {
 		verifyTx(tx)
 	}
 
-	MarkIngested(b.Transactions)
-	blockchain.Store(b.HashString(), b)
+	persist(b)
+	err := memmq.Publish("blocks", b)
+	if err != nil {
+		panic(err)
+	}
 
-	if blockchain.Len() % numOfBlocksBeforeAdjust == 0 { // genesis block is hard-coded not broadcasted
+	if blockchain.Len()%numOfBlocksBeforeAdjust == 0 { // genesis block is hard-coded not broadcasted
 		first := blockchain.LoadIndex(blockchain.Len() - numOfBlocksBeforeAdjust)
 		last := blockchain.Last()
 		actualTime := new(big.Float).SetInt64(int64(last.Timestamp - first.Timestamp))
-		expectedTime := new(big.Float).SetInt64(10*60*int64(numOfBlocksBeforeAdjust))
+		expectedTime := new(big.Float).SetInt64(10 * 60 * int64(numOfBlocksBeforeAdjust))
 		diff.Mul(diff, new(big.Float).Quo(expectedTime, actualTime))
 	}
 	return nil
+}
+
+func persist(b Block) {
+	MarkIngested(b.Transactions)
+	blockchain.Store(b.HashString(), b)
 }

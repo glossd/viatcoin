@@ -36,9 +36,11 @@ func Sync(apiUrls []string) error {
 	if err != nil {
 		return err
 	}
-	// todo synchronization must be constant
 
-	return nil
+	// todo constantly check how's the height of others and switch if any is longer
+	return Stream(longestChainUrl, func(block Block) {
+		persist(block)
+	})
 }
 
 func TotalWork(blocks []Block) *big.Int {
@@ -85,8 +87,7 @@ func downloadBlocks(apiUrl string) ([]Block, error) {
 func setBlockchain(blocks []Block) {
 	for _, block := range blocks {
 		// whereas Bitcoin recontructs UTXO set, Viatcoin reconstruct the wallets.
-		MarkIngested(block.Transactions)
-		blockchain.Store(block.HashString(), block)
+		persist(block)
 	}
 }
 

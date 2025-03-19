@@ -79,13 +79,15 @@ func RunAPI(port int) {
 		return Push(in)
 	}))
 
-	sm.HandleFunc("/api/difficulty/target/bits", fetch.ToHandlerFuncEmptyIn(func() (uint32, error) {
+	sm.HandleFunc("GET /api/difficulty/target/bits", fetch.ToHandlerFuncEmptyIn(func() (uint32, error) {
 		return GetDiffuctlyTargetBits(), nil
 	}))
 
-	sm.HandleFunc("/api/reward", fetch.ToHandlerFuncEmptyIn(func() (uint64, error) {
+	sm.HandleFunc("GET /api/reward", fetch.ToHandlerFuncEmptyIn(func() (uint64, error) {
 		return uint64(GetMinerReward()), nil
 	}))
+
+	sm.HandleFunc("/api/stream", serverStream)
 
 	http.ListenAndServe(fmt.Sprintf(":%d", port), sm)
 }
