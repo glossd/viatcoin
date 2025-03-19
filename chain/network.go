@@ -2,7 +2,6 @@ package chain
 
 import (
 	"fmt"
-	"github.com/glossd/memmq"
 	"math"
 	"math/big"
 	"reflect"
@@ -77,10 +76,6 @@ func doBroadcast(b Block, diff *big.Float, numOfBlocksBeforeAdjust int) error {
 	}
 
 	persist(b)
-	err := memmq.Publish("blocks", b)
-	if err != nil {
-		panic(err)
-	}
 
 	if blockchain.Len()%numOfBlocksBeforeAdjust == 0 { // genesis block is hard-coded not broadcasted
 		first := blockchain.LoadIndex(blockchain.Len() - numOfBlocksBeforeAdjust)

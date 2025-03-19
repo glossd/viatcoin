@@ -87,7 +87,9 @@ func RunAPI(port int) {
 		return uint64(GetMinerReward()), nil
 	}))
 
-	sm.HandleFunc("/api/stream", serverStream)
+	sm.HandleFunc("GET /api/height", fetch.ToHandlerFuncEmptyIn(func() (uint64, error) {
+		return uint64(blockchain.Len() - 1), nil
+	}))
 
 	http.ListenAndServe(fmt.Sprintf(":%d", port), sm)
 }

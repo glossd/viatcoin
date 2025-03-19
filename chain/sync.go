@@ -5,16 +5,23 @@ import (
 	"fmt"
 	"github.com/glossd/fetch"
 	"math/big"
+	"time"
 )
 
-func Sync(apiUrls []string) error {
+func Bootstrap(apiUrls []string) error {
 	// Longest Chain Rule
 	// Multiple valid chains may exist at the same time, but one eventually will outgrow another.
 	var longestChain []Block
 	var longestChainTotalWork = new(big.Int)
 	var longestChainUrl = ""
 	for _, url := range apiUrls {
-		// todo start working with the first chain
+		height, err := fetch.Get[int](url+"/api/height", fetch.Config{Timeout: 5 * time.Second})
+		if err != nil {
+			return err
+		}
+		if height <= len(longestChain)-1 {
+			continue
+		}
 		blocks, err := downloadBlocks(url)
 		if err != nil {
 			return err
@@ -38,9 +45,8 @@ func Sync(apiUrls []string) error {
 	}
 
 	// todo constantly check how's the height of others and switch if any is longer
-	return Stream(longestChainUrl, func(block Block) {
-		persist(block)
-	})
+	// todo isntead of streaming, keep checking the height and if it's bigger then accept
+	return nil
 }
 
 func TotalWork(blocks []Block) *big.Int {
