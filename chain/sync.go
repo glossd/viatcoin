@@ -15,26 +15,26 @@ func Bootstrap(apiUrls []string) error {
 	var longestChainTotalWork = new(big.Int)
 	var longestChainUrl = ""
 	for _, url := range apiUrls {
-		height, err := fetch.Get[int](url+"/api/height", fetch.Config{Timeout: 5 * time.Second})
+		chainWork, err := fetch.Get[[]byte](url+"/api/work", fetch.Config{Timeout: 5 * time.Second})
 		if err != nil {
 			return err
 		}
-		if height <= len(longestChain)-1 {
+		newTotalWork := new(big.Int).SetBytes(chainWork)
+		if newTotalWork.Cmp(longestChainTotalWork) <= 0 {
 			continue
 		}
 		blocks, err := downloadBlocks(url)
 		if err != nil {
 			return err
 		}
-		newTotalWork := TotalWork(blocks)
-		if newTotalWork.Cmp(longestChainTotalWork) > 0 {
-			clear(longestChain) // help gc
-			longestChain = blocks
-			longestChainTotalWork = newTotalWork
-			longestChainUrl = url
-		} else {
-			clear(blocks) // help gc
+		if newTotalWork != TotalWork(blocks) {
+			return fmt.Errorf("corrupted chain: total work mismatch, apiUrl=%s", url)
 		}
+
+		clear(longestChain) // help gc
+		longestChain = blocks
+		longestChainTotalWork = newTotalWork
+		longestChainUrl = url
 	}
 
 	setBlockchain(longestChain)

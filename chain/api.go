@@ -91,5 +91,9 @@ func RunAPI(port int) {
 		return uint64(blockchain.Len() - 1), nil
 	}))
 
+	sm.HandleFunc("GET /api/work", fetch.ToHandlerFuncEmptyIn(func() ([]byte, error) {
+		return TotalWork(blockchain.LoadRangeSafe(0, math.MaxInt)).Bytes(), nil
+	}))
+
 	http.ListenAndServe(fmt.Sprintf(":%d", port), sm)
 }
