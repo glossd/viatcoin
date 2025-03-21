@@ -47,6 +47,10 @@ func GetDiffuctlyTargetBits() uint32 {
 	return DiffucltyToBits(difficulty)
 }
 
+func GetTotalWork() *big.Int {
+	return TotalWork(blockchain.LoadRangeSafe(0, math.MaxInt))
+}
+
 func Broadcast(b Block) error {
 	return doBroadcast(b, difficulty, NumBlocksAdjust)
 }

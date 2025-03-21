@@ -44,9 +44,33 @@ func Bootstrap(apiUrls []string) error {
 		return err
 	}
 
-	// todo constantly check how's the height of others and switch if any is longer
-	// todo isntead of streaming, keep checking the height and if it's bigger then accept
 	return nil
+}
+
+// todo constantly check how's the height of others and switch if any is longer
+func sync(apiUrl string) error {
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+	for {
+		<-ticker.C
+		height, err := fetch.Get[int](apiUrl+"/api/height", fetch.Config{Timeout: 5 * time.Second})
+		if err != nil {
+			return err
+		}
+		if height <= blockchain.Len()-1 {
+			// no new blocks
+			continue
+		}
+		blocks, err := downloadBlocks(apiUrl)
+		if err != nil {
+			return err
+		}
+		if GetTotalWork().Cmp(TotalWork(blocks)) >= 0 {
+			// the other chain has less work but higher, sus.
+			continue
+		}
+		// todo algorithm for replacing blockchain
+	}
 }
 
 func TotalWork(blocks []Block) *big.Int {
