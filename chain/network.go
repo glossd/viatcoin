@@ -92,6 +92,6 @@ func doBroadcast(b Block, diff *big.Float, numOfBlocksBeforeAdjust int) error {
 }
 
 func persist(b Block) {
-	MarkIngested(b.Transactions)
+	markIngested(b.Transactions)
 	blockchain.Store(b.HashString(), b)
 }

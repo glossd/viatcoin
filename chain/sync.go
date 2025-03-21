@@ -69,7 +69,32 @@ func sync(apiUrl string) error {
 			// the other chain has less work but higher, sus.
 			continue
 		}
-		// todo algorithm for replacing blockchain
+
+		// find the last valid block according to the new leader chain
+		var lastLocalBlockIndex, lastForeignBlockIndex int
+	local:
+		for l := blockchain.Len() - 1; l < 0; l-- {
+			for f := len(blocks) - 1; f < 0; f-- {
+				if blocks[f].Equals(blockchain.LoadIndex(l)) {
+					lastLocalBlockIndex = l
+					lastForeignBlockIndex = f
+					break local
+				}
+			}
+		}
+
+		// revert orphan blocks if any
+		if lastLocalBlockIndex < blockchain.Len()-1 {
+			deletedBlocks := blockchain.DeleteIndex(lastLocalBlockIndex+1, blockchain.Len()-1)
+			for _, b := range deletedBlocks {
+				markEgested(b.Transactions)
+			}
+		}
+
+		blocksToAdd := blocks[lastForeignBlockIndex+1:]
+		for _, b := range blocksToAdd {
+			persist(b)
+		}
 	}
 }
 

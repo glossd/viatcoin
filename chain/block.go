@@ -73,6 +73,10 @@ func (b Block) HashString() string {
 	return hex.EncodeToString(doubleSHA256(b.blockHeader()))
 }
 
+func (b Block) Equals(o Block) bool {
+	return bytes.Equal(b.blockHeader(), o.blockHeader())
+}
+
 func (b Block) DifficultyTarget() *big.Int {
 	if b.difficultyTarget != nil {
 		return b.difficultyTarget

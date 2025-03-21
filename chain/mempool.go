@@ -71,16 +71,38 @@ func Top(num int) []Transaction {
 	return res
 }
 
-func MarkIngested(ts []Transaction) {
+func markIngested(ts []Transaction) {
 	for _, t := range ts {
 		memPool.Delete(t.ID)
-		var transferSum int64
+		var transferSum Coin
 		for _, tf := range t.Transfers {
-			amounts, _ := wallets.Load(tf.To)
-			wallets.Store(tf.To, append(amounts, int64(tf.Amount)))
-			transferSum += int64(tf.Amount)
+			deposit(tf.To, tf.Amount)
+			transferSum += tf.Amount
 		}
-		amounts, _ := wallets.Load(t.From)
-		wallets.Store(t.From, append(amounts, -transferSum))
+		withdraw(t.From, transferSum)
+	}
+}
+
+func deposit(addr string, amount Coin) {
+	amounts, _ := wallets.Load(addr)
+	wallets.Store(addr, append(amounts, int64(amount)))
+}
+
+func withdraw(addr string, amount Coin) {
+	amounts, _ := wallets.Load(addr)
+	wallets.Store(addr, append(amounts, -int64(amount))) // fixme conversion
+}
+
+// In case a block gets reverted by a longer chain.
+func markEgested(ts []Transaction) {
+	for _, t := range ts {
+		var transferSum Coin
+		for _, tf := range t.Transfers {
+			withdraw(tf.To, tf.Amount)
+			transferSum += tf.Amount
+		}
+		deposit(t.From, transferSum)
+
+		memPool.Store(t.ID, t)
 	}
 }

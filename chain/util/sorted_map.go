@@ -6,7 +6,7 @@ import (
 )
 
 type SortedMap[K comparable, V any] struct {
-	mu sync.RWMutex
+	mu    sync.RWMutex
 	inner map[K]V
 	order []K
 }
@@ -33,6 +33,23 @@ func (sm *SortedMap[K, V]) Delete(key K) {
 	}
 	_ = slices.Delete(sm.order, i, i+1)
 }
+
+// DeleteIndex removes the elements s[i:j] from s
+// near O(1)
+func (sm *SortedMap[K, V]) DeleteIndex(i, j int) (deleted []V) {
+	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	sm.init()
+
+	keys := sm.order[i:j]
+	slices.Delete(sm.order, i, j)
+	for _, key := range keys {
+		deleted = append(deleted, sm.inner[key])
+		delete(sm.inner, key)
+	}
+	return
+}
+
 func (sm *SortedMap[K, V]) Load(key K) (value V, ok bool) {
 	sm.mu.RLock()
 	defer sm.mu.RUnlock()
@@ -83,14 +100,14 @@ func (sm *SortedMap[K, V]) LoadRangeSafe(i, j int) []V {
 	}
 	if j > len(sm.order) {
 		j = len(sm.order)
-	} 
+	}
 	for _, key := range sm.order[i:j] {
 		res = append(res, sm.inner[key])
 	}
 	return res
 }
 
-func (sm *SortedMap[K, V]) Store(key K, value V) { 
+func (sm *SortedMap[K, V]) Store(key K, value V) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	sm.init()
@@ -99,12 +116,12 @@ func (sm *SortedMap[K, V]) Store(key K, value V) {
 	sm.order = append(sm.order, key)
 }
 
-func (sm *SortedMap[K, V]) LoadOrStore(key K, value V) (actual V, loaded bool) { 
+func (sm *SortedMap[K, V]) LoadOrStore(key K, value V) (actual V, loaded bool) {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	sm.init()
-	
-	old , ok := sm.inner[key]
+
+	old, ok := sm.inner[key]
 	if ok {
 		return old, true
 	} else {
@@ -122,7 +139,7 @@ func (sm *SortedMap[K, V]) Len() int {
 	return len(sm.order)
 }
 
-func (sm *SortedMap[K, V]) Clear() { 
+func (sm *SortedMap[K, V]) Clear() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 
