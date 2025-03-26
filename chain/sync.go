@@ -4,11 +4,32 @@ import (
 	"bytes"
 	"fmt"
 	"github.com/glossd/fetch"
+	"log"
 	"math/big"
 	"time"
 )
 
-func Bootstrap(apiUrls []string) error {
+func Join(apiUrls []string) error {
+	if len(apiUrls) > 0 {
+		err := bootstrap(apiUrls)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, url := range apiUrls {
+		go func(url string) {
+			// todo sync with memPool
+			err := syncWith(url)
+			if err != nil {
+				log.Printf("disconteecting synchronization, url=\"%s\", error: %s", url, err)
+			}
+		}(url)
+	}
+	return nil
+}
+
+func bootstrap(apiUrls []string) error {
 	// Longest Chain Rule
 	// Multiple valid chains may exist at the same time, but one eventually will outgrow another.
 	var longestChain []Block
@@ -47,8 +68,7 @@ func Bootstrap(apiUrls []string) error {
 	return nil
 }
 
-// todo constantly check how's the height of others and switch if any is longer
-func sync(apiUrl string) error {
+func syncWith(apiUrl string) error {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 	for {
@@ -70,31 +90,38 @@ func sync(apiUrl string) error {
 			continue
 		}
 
-		// find the last valid block according to the new leader chain
-		var lastLocalBlockIndex, lastForeignBlockIndex int
-	local:
-		for l := blockchain.Len() - 1; l < 0; l-- {
-			for f := len(blocks) - 1; f < 0; f-- {
-				if blocks[f].Equals(blockchain.LoadIndex(l)) {
-					lastLocalBlockIndex = l
-					lastForeignBlockIndex = f
-					break local
-				}
+		replaceBlockchain(blocks)
+	}
+}
+
+func replaceBlockchain(blocks []Block) {
+	blockchainLock.Lock()
+	defer blockchainLock.Unlock()
+
+	// find the last valid block according to the new leader chain
+	var lastLocalBlockIndex, lastForeignBlockIndex int
+local:
+	for l := blockchain.Len() - 1; l < 0; l-- {
+		for f := len(blocks) - 1; f < 0; f-- {
+			if blocks[f].Equals(blockchain.LoadIndex(l)) {
+				lastLocalBlockIndex = l
+				lastForeignBlockIndex = f
+				break local
 			}
 		}
+	}
 
-		// revert orphan blocks if any
-		if lastLocalBlockIndex < blockchain.Len()-1 {
-			deletedBlocks := blockchain.DeleteIndex(lastLocalBlockIndex+1, blockchain.Len()-1)
-			for _, b := range deletedBlocks {
-				markEgested(b.Transactions)
-			}
+	// revert orphan blocks if any
+	if lastLocalBlockIndex < blockchain.Len()-1 {
+		deletedBlocks := blockchain.DeleteIndex(lastLocalBlockIndex+1, blockchain.Len()-1)
+		for _, b := range deletedBlocks {
+			markEgested(b.Transactions)
 		}
+	}
 
-		blocksToAdd := blocks[lastForeignBlockIndex+1:]
-		for _, b := range blocksToAdd {
-			persist(b)
-		}
+	blocksToAdd := blocks[lastForeignBlockIndex+1:]
+	for _, b := range blocksToAdd {
+		persist(b)
 	}
 }
 

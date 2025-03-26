@@ -1,12 +1,12 @@
 package chain
 
 import (
+	"bytes"
 	"fmt"
+	"github.com/glossd/viatcoin/chain/util"
 	"math"
 	"math/big"
-	"reflect"
-
-	"github.com/glossd/viatcoin/chain/util"
+	"sync"
 )
 
 type Net byte
@@ -27,9 +27,11 @@ var difficulty = new(big.Float).SetFloat64(0.001)
 
 const NumBlocksAdjust = 2016
 
-var originalMinerReward = 50 * Viatcoin
+const OriginalMinerReward = 50 * Viatcoin
 
 var blockchain = util.SortedMap[string, Block]{}
+
+var blockchainLock sync.Mutex
 
 func init() {
 	blockchain.Store(genesisBlock.HashString(), genesisBlock)
@@ -40,7 +42,7 @@ func GetLastBlock() Block {
 }
 
 func GetMinerReward() Coin {
-	return originalMinerReward / Coin(math.Pow(2, float64(blockchain.Len()/210_000)))
+	return OriginalMinerReward / Coin(math.Pow(2, float64(blockchain.Len()/210_000)))
 }
 
 func GetDiffuctlyTargetBits() uint32 {
@@ -59,9 +61,10 @@ func doBroadcast(b Block, diff *big.Float, numOfBlocksBeforeAdjust int) error {
 	if !b.Valid() {
 		return fmt.Errorf("invalid block")
 	}
-	if !reflect.DeepEqual(b.PreviousHash, blockchain.Last().Hash()) {
+	if !bytes.Equal(b.PreviousHash, blockchain.Last().Hash()) {
 		return fmt.Errorf("invalid previous hash")
 	}
+
 	// todo check the timestamps
 	if len(b.Transactions) == 0 {
 		return fmt.Errorf("block must have at least one coinbase transaction")
@@ -76,7 +79,15 @@ func doBroadcast(b Block, diff *big.Float, numOfBlocksBeforeAdjust int) error {
 	}
 
 	for _, tx := range b.Transactions[1:] {
-		verifyTx(tx)
+		if err := verifyTx(tx); err != nil {
+			return fmt.Errorf("invalid transaction tx_id='%s': %s", tx.ID, err)
+		}
+	}
+
+	blockchainLock.Lock()
+	defer blockchainLock.Unlock()
+	if !bytes.Equal(b.PreviousHash, blockchain.Last().Hash()) {
+		return fmt.Errorf("invalid previous hash: blockchain changed")
 	}
 
 	persist(b)

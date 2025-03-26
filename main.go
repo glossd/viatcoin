@@ -6,7 +6,7 @@ import (
 )
 
 func main() {
-	go chain.RunAPI(8333)
+	go chain.Run(8333)
 
 	pk, err := chain.NewPrivateKey()
 	if err != nil {

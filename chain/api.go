@@ -2,6 +2,7 @@ package chain
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"net/http"
 	"slices"
@@ -10,7 +11,12 @@ import (
 	"github.com/glossd/fetch"
 )
 
-func RunAPI(port int) {
+func Run(port int, joinNetworkUrls ...string) {
+	err := Join(joinNetworkUrls)
+	if err != nil {
+		log.Fatalf("Failed to join network: %s", err)
+	}
+
 	sm := &http.ServeMux{}
 
 	sm.HandleFunc("GET /api/blocks", fetch.ToHandlerFunc(func(in fetch.RequestEmpty) ([]Block, error) {
